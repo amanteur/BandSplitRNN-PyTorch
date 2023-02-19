@@ -1,0 +1,7 @@
+target: vocals
+is_mono: False
+musdb_params:
+  root: "../../../datasets/musdb18hq"
+  download: False
+  subsets: "test"
+  is_wav: True

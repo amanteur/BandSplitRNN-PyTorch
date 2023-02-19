@@ -1,0 +1,8 @@
+target: vocals
+is_mono: False
+musdb_params:
+  root: "../../../datasets/musdb18hq"
+  download: False
+  subsets: "train"
+  split: "valid"
+  is_wav: True

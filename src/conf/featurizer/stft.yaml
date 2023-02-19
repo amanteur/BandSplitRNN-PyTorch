@@ -1,0 +1,11 @@
+direct_transform:
+  _target_: torchaudio.transforms.Spectrogram
+  n_fft: 2048
+  win_length: 2048
+  hop_length: 512
+  power: null
+inverse_transform:
+  _target_: torchaudio.transforms.InverseSpectrogram
+  n_fft: 2048
+  win_length: 2048
+  hop_length: 512

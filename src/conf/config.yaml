@@ -1,0 +1,26 @@
+defaults:
+  - model: bandsplitrnnV7
+  - train_dataset: default
+  - val_dataset: default
+  - sad: default
+  - featurizer: stft
+  - _self_
+
+train_loader:
+  batch_size: 2
+  num_workers: 4
+val_loader:
+  batch_size: 2
+  num_workers: 4
+
+opt:
+  _target_: torch.optim.Adam
+  lr: 1e-3
+sch:
+  _target_: torch.optim.lr_scheduler.StepLR
+  step_size: 2
+  gamma: 0.98
+  
+ckpt_path: null
+
+

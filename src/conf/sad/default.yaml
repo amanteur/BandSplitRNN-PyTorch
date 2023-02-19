@@ -1,0 +1,8 @@
+sr: 44100
+window_size_in_sec: 6
+overlap_ratio: 0.5
+n_chunks_per_segment: 10
+eps: 1e-5
+gamma: 1e-3
+threshold_max_quantile: 0.15
+threshold_segment: 0.5
