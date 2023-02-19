@@ -20,11 +20,11 @@ class BandSplitModule(nn.Module):
 
         self.bandwidth_indices = freq2bands(bandsplits, sr, n_fft)
         self.layernorms = nn.ModuleList([
-            nn.LayerNorm([1, (e - s), t_timesteps])
+            nn.LayerNorm([1, (e - s) * 2, t_timesteps])
             for s, e in self.bandwidth_indices
         ])
         self.fcs = nn.ModuleList([
-            nn.Linear((e - s), fc_dim)
+            nn.Linear((e - s) * 2, fc_dim)
             for s, e in self.bandwidth_indices
         ])
 
@@ -42,6 +42,8 @@ class BandSplitModule(nn.Module):
         """
         xs = []
         for i, x in enumerate(self.generate_subband(x)):
+            # concat real and imag parts of complex Tensor across freq dim
+            x = torch.cat([x.real, x.imag], dim=-2)
             x = self.layernorms[i](x)
             x = x.transpose(-1, -2)
             x = self.fcs[i](x)
@@ -50,8 +52,8 @@ class BandSplitModule(nn.Module):
 
 
 if __name__ == '__main__':
-    batch_size, n_channels, freq, time = 8, 1, 1025, 517
-    in_features = torch.rand(batch_size, n_channels, freq, time)
+    batch_size, n_channels, freq, time = 4, 1, 1025, 517
+    in_features = torch.rand(batch_size, n_channels, freq, time, dtype=torch.cfloat)
 
     cfg = {
         "sr": 44100,

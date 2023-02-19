@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset
 import torchaudio
 from pathlib import Path
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 
 
 class SourceSeparationDataset(Dataset):
@@ -87,7 +87,6 @@ class SourceSeparationDataset(Dataset):
         return (
             mix_segment, target_segment
         )
-
 
     def __len__(self):
         return len(self.filelist)

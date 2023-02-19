@@ -55,15 +55,9 @@ class BandSplitRNN(nn.Module):
         """
         Computes complex-valued T-F mask.
         """
-        # separate into real and imag parts and concat
-        x = torch.cat([x.real, x.imag], dim=0)
-
         x = self.bandsplit(x)  # [batch_size, k_subbands, time, fc_dim]
         x = self.bandsequence(x)  # [batch_size, k_subbands, time, fc_dim]
         x = self.maskest(x)  # [batch_size, freq, time]
-
-        # concat into complex valued mask
-        x = torch.complex(*x.chunk(2, dim=0))
 
         return x
 
@@ -85,7 +79,7 @@ class BandSplitRNN(nn.Module):
 
 if __name__ == '__main__':
     batch_size, n_channels, freq, time = 1, 1, 1025, 517
-    in_features = torch.rand(batch_size, n_channels, freq, time)
+    in_features = torch.rand(batch_size, n_channels, freq, time, dtype=torch.cfloat)
     cfg = {
         "sr": 44100,
         "n_fft": 2048,

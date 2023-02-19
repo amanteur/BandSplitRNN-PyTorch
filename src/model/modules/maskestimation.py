@@ -72,7 +72,7 @@ class MaskEstimationModule(nn.Module):
             for _ in range(len(self.bandwidths))
         ])
         self.mlp = nn.ModuleList([
-            MLP(fc_dim, mlp_dim, bw, activation_type='tanh')
+            MLP(fc_dim, mlp_dim, bw*2, activation_type='tanh')
             for bw in self.bandwidths
         ])
 
@@ -83,9 +83,14 @@ class MaskEstimationModule(nn.Module):
         """
         outs = []
         for i in range(x.shape[1]):
+            # run through model
             out = self.layernorms[i](x[:, i])
             out = self.mlp[i](out)
+            # split tensor's real and imag parts and make complex Tensor
+            out = torch.complex(*out.chunk(2, dim=-1))
             outs.append(out)
+
+        # concat all subbands
         outs = torch.cat(outs, dim=-1)
         outs = outs.transpose(-1, -2)
         return outs.unsqueeze(1)
@@ -117,6 +122,5 @@ if __name__ == '__main__':
     with torch.no_grad():
         out_features = model(in_features)
 
-    print(model)
     print(f"Total number of parameters: {sum([p.numel() for p in model.parameters()])}")
     print(f"In: {in_features.shape}\nOut: {out_features.shape}")
