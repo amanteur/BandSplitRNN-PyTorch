@@ -27,7 +27,7 @@ class SAD:
         self.threshold_segment = threshold_segment
 
         self.window_size = sr * window_size_in_sec
-        self.step_size = int(self.window_size * overlap_ratio) + 1
+        self.step_size = int(self.window_size * overlap_ratio)
 
     def chunk(self, y: torch.Tensor):
         """
@@ -77,8 +77,7 @@ class SAD:
     def __call__(
             self,
             y: torch.Tensor,
-            segment_saliency_mask:
-            Optional[torch.Tensor] = None
+            segment_saliency_mask: Optional[torch.Tensor] = None
     ):
         """
         Stacks signal into segments and filters out silent segments.
@@ -95,6 +94,19 @@ class SAD:
             segment_saliency_mask = self.calculate_thresholds(rms)
         y_salient = self.calculate_salient(y, segment_saliency_mask)
         return y_salient, segment_saliency_mask
+
+    def calculate_salient_indices(
+            self,
+            y: torch.Tensor
+    ):
+        """
+        Returns start indices of salient regions of audio
+        """
+        y = self.chunk(y)
+        rms = self.calculate_rms(y)
+        mask = self.calculate_thresholds(rms)
+        indices = torch.arange(mask.shape[-1])[mask] * self.step_size
+        return indices.tolist()
 
 
 if __name__ == "__main__":
