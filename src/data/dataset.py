@@ -1,86 +1,93 @@
 import torch
 from torch.utils.data import Dataset
-import numpy as np
-import musdb
-
-from typing import Dict, Union, Tuple
-import random
-
-from .preprocessing import SAD
+import torchaudio
+from pathlib import Path
+from typing import List, Tuple, Dict
 
 
-class SourceSeparationDataset(torch.utils.data.Dataset):
+class SourceSeparationDataset(Dataset):
+    """
+    Dataset class for working with data from MUSDB18 dataset.
+    """
+
     def __init__(
             self,
-            target: str,
-            is_mono: bool,
-            musdb_params: Dict[str, Union[bool, str]],
-            sad_params: Dict[str, Union[int, float]],
+            file_dir: str,
+            txt_dir: str = None,
+            txt_path: str = None,
+            target: str = 'vocals',
+            is_mono: bool = False,
+            mode: str = 'train',
     ):
-        """
-
-        :param target:
-        :param is_mono:
-        :param musdb_params:
-        :param sad_params:
-        """
+        self.file_dir = Path(file_dir)
+        self.mode = mode
         self.target = target
-        self.is_mono = is_mono
-        self.sr = sad_params['sr']
-        self.mus = musdb.DB(**musdb_params)
-        self.sad = SAD(**sad_params)
 
-    def prepare_fragments(
+        if txt_path is None and txt_dir is not None:
+            self.txt_path = Path(txt_dir) / f"{target}_{mode}.txt"
+        elif txt_path is not None and txt_dir is None:
+            self.txt_path = Path(txt_path)
+        else:
+            raise ValueError("You need to specify either 'txt_path' or 'txt_dir'.")
+
+        self.is_mono = is_mono
+        self.filelist, self.labellist = self.get_filelist()
+
+    def get_filelist(
+            self
+    ) -> Tuple[List[Tuple[Path, Tuple[int, int]]], List[int]]:
+        filename2label = {}
+        filelist = []
+        labellist = []
+        i = 0
+        for line in open(self.txt_path, 'r').readlines():
+            file_name, start_idx, end_idx = line.split('\t')
+            if file_name not in filename2label:
+                filename2label[file_name] = i
+                i += 1
+            filepath_template = self.file_dir / f"{self.mode}" / f"{file_name}" / "{}.wav"
+            filelist.append(
+                (filepath_template, (int(start_idx), int(end_idx)))
+            )
+            labellist.append(filename2label[file_name])
+        return filelist, labellist
+
+    def load_file(
             self,
-            mix_audio: np.ndarray,
-            tgt_audio: np.ndarray
+            file_path: str,
+            indices: Tuple[int, int]
+    ) -> torch.Tensor:
+        assert Path(file_path).is_file(), f"There is no such file - {file_path}."
+        offset = indices[0]
+        num_frames = indices[1] - indices[0]
+        y, sr = torchaudio.load(
+            file_path,
+            frame_offset=offset,
+            num_frames=num_frames,
+            channels_first=True
+        )
+        if self.is_mono:
+            y = torch.mean(y, dim=0, keepdim=True)
+        return y
+
+    def __getitem__(
+            self,
+            index: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Input shape: [n_channels, total_frames]
-        Output shape: [n_segments, n_channels, frames_in_segment]
+        Each Tensor's output shape: [n_channels, frames_in_segment]
         """
-        '''
-        
-        '''
-        mix_audio = torch.tensor(
-            mix_audio,
-            dtype=torch.float32
+        fp_template, indices = self.filelist[index]
+        mix_segment = self.load_file(
+            str(fp_template).format('mixture'), indices
         )
-        tgt_audio = torch.tensor(
-            tgt_audio,
-            dtype=torch.float32
+        target_segment = self.load_file(
+            str(fp_template).format(self.target), indices
         )
-
-        tgt_frags, mask = self.sad(tgt_audio)
-        mix_frags, _ = self.sad(mix_audio, mask)
-
         return (
-            mix_frags.transpose(0, 1),
-            tgt_frags.transpose(0, 1)
+            mix_segment, target_segment
         )
 
-    def __getitem__(self, index):
-        """
-        Output shape: [n_channels, frames_in_segment]
-        """
-        track = self.mus[index]
-        mix, tgt = self.prepare_fragments(
-            track.audio.T,
-            track.targets[self.target].audio.T
-        )
-        segment_idx = random.choice(range(mix.shape[1]))
-
-        mix_segment = mix[segment_idx]
-        tgt_segment = tgt[segment_idx]
-
-        if self.is_mono:
-            mix_segment = torch.mean(mix_segment, dim=0, keepdim=True)
-            tgt_segment = torch.mean(tgt_segment, dim=0, keepdim=True)
-
-        return (
-            mix_segment,
-            tgt_segment
-        )
 
     def __len__(self):
-        return len(self.mus)
+        return len(self.filelist)

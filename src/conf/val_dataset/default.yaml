@@ -1,8 +1,6 @@
+file_dir: "/Users/amanturamatov/PythonProjects/datasets/musdb18hq/"
+txt_dir: "files/"
+txt_path: null
 target: vocals
+mode: valid
 is_mono: False
-musdb_params:
-  root: "../../../datasets/musdb18hq"
-  download: False
-  subsets: "train"
-  split: "valid"
-  is_wav: True

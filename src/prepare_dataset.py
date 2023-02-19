@@ -21,8 +21,8 @@ def prepare_save_line(
         yield save_line
 
 
-def save_to_file(
-        file_path: str,
+def run_program(
+        file_path: Path,
         target: str,
         db: musdb.DB,
         sad: SAD,
@@ -32,11 +32,14 @@ def save_to_file(
     """
     with open(file_path, 'w') as wf:
         for track in tqdm(db):
-            y = track.targets[target].audio.T
+            # get audio data and transform to torch.Tensor
             y = torch.tensor(
-                y, dtype=torch.float32
+                track.targets[target].audio.T,
+                dtype=torch.float32
             )
+            # find indices of salient segments
             indices = sad.calculate_salient_indices(y)
+            # write to file
             for line in prepare_save_line(track.name, indices, sad.window_size):
                 wf.write(line)
     return None
@@ -50,6 +53,7 @@ def main(
         targets: List[str],
         cfg_sad: OmegaConf
 ):
+    # initialize MUSDB parser
     db = musdb.DB(
         root=db_dir,
         subsets=subset,
@@ -57,8 +61,10 @@ def main(
         download=False,
         is_wav=True,
     )
+    # initialize Source Activity Detector
     sad = SAD(**cfg_sad)
 
+    # initialize directories where to save indices
     save_dir = Path(save_dir)
     save_dir.mkdir(exist_ok=True)
 
@@ -69,7 +75,8 @@ def main(
             file_path = save_dir / f"{target}_valid.txt"
         else:
             file_path = save_dir / f"{target}_test.txt"
-        save_to_file(file_path, target, db, sad)
+        # segment data and save indices to .txt file
+        run_program(file_path, target, db, sad)
 
     return None
 

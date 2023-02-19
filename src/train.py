@@ -19,11 +19,9 @@ def initialize_loaders(cfg: DictConfig) -> Tuple[DataLoader, DataLoader]:
     """
     train_dataset = SourceSeparationDataset(
         **cfg.train_dataset,
-        sad_params=cfg.sad,
     )
     val_dataset = SourceSeparationDataset(
         **cfg.val_dataset,
-        sad_params=cfg.sad,
     )
     train_loader = DataLoader(
         train_dataset,
