@@ -1,0 +1,13 @@
+lr_monitor:
+  _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  logging_interval: 'epoch'
+
+model_ckpt:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  monitor: 'val/loss'
+  mode: 'min'
+  save_top_k: 10
+  dirpath: '/weights'
+  filename: 'epoch{epoch:02d}-val_loss{val/loss:.2f}'
+  auto_insert_metric_name: False
+

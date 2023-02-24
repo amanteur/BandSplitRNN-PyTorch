@@ -1,11 +1,14 @@
+# defaults
 defaults:
   - model: bandsplitrnnV7
   - train_dataset: default
   - val_dataset: default
   - sad: default
   - featurizer: stft
+  - callbacks: default
   - _self_
 
+# data
 train_loader:
   batch_size: 2
   num_workers: 4
@@ -13,6 +16,7 @@ val_loader:
   batch_size: 2
   num_workers: 4
 
+# optimizer and scheduler
 opt:
   _target_: torch.optim.Adam
   lr: 1e-3
@@ -20,7 +24,32 @@ sch:
   _target_: torch.optim.lr_scheduler.StepLR
   step_size: 2
   gamma: 0.98
-  
+
 ckpt_path: null
+
+logger:
+  _target_: pytorch_lightning.loggers.TensorBoardLogger
+  save_dir: "/tb_logs"
+  name: ""
+  version: ""
+
+trainer:
+  fast_dev_run: False
+  max_epochs: 100
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: 2
+  log_every_n_steps: 50
+  accelerator: "cpu"
+  devices: 1
+  gradient_clip_val: 5
+  track_grad_norm: 2
+  precision: 32
+  enable_progress_bar: True
+
+hydra:
+  run:
+    dir: logs/bandsplitrnn/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: False
 
 

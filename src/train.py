@@ -1,13 +1,17 @@
+import os
 import hydra
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
-from hydra.utils import instantiate
+from hydra.utils import instantiate, get_original_cwd
 
 import torch
 import torch.nn as nn
+import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from data import SourceSeparationDataset, collate_fn
 from model import BandSplitRNN
+from pl_model import PLModel
 
 from typing import Tuple
 from torch.optim import Optimizer, lr_scheduler
@@ -41,7 +45,7 @@ def initialize_loaders(cfg: DictConfig) -> Tuple[DataLoader, DataLoader]:
 
 def initialize_featurizer(
         cfg: DictConfig
-) -> [nn.Module, nn.Module]:
+) -> Tuple[nn.Module, nn.Module]:
     """
     Initializes direct and inverse featurizers for audio.
     """
@@ -74,13 +78,54 @@ def initialize_model(
     return model, opt, sch
 
 
+def initialize_utils(
+        cfg: DictConfig
+):
+    # change model and logs saving directory to logging directory of hydra
+    hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
+    save_dir = hydra_cfg['runtime']['output_dir']
+    cfg.logger.save_dir = save_dir + cfg.logger.save_dir
+    cfg.callbacks.model_ckpt.dirpath = save_dir + cfg.callbacks.model_ckpt.dirpath
+    # initialize logger and callbacks
+    logger = instantiate(cfg.logger)
+    callbacks = list(instantiate(cfg.callbacks).values())
+    return logger, callbacks
+
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def my_app(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
+
+    # initializing loaders, featurizers
     train_loader, val_loader = initialize_loaders(cfg)
-    featurizer = initialize_featurizer(cfg)
+    featurizer, inverse_featurizer = initialize_featurizer(cfg)
+    # TODO: augmentations = initialize_augmentations(cfg)
+
+    # initializing model, optimizer, and scheduler
     model, opt, sch = initialize_model(cfg)
+
+    # initialize other stuff
+    logger, callbacks = initialize_utils(cfg)
+
+    # initialize lightning model and trainer
+    plmodel = PLModel(
+        model,
+        featurizer, inverse_featurizer,
+        opt, sch,
+        cfg
+    )
+    trainer = pl.Trainer(
+        **cfg.trainer,
+        logger=logger,
+        callbacks=callbacks,
+    )
+
+    # fit model
+    trainer.fit(
+        plmodel,
+        train_dataloaders=train_loader,
+        val_dataloaders=val_loader
+    )
 
 
 if __name__ == "__main__":

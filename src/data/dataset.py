@@ -20,7 +20,7 @@ class SourceSeparationDataset(Dataset):
             mode: str = 'train',
     ):
         self.file_dir = Path(file_dir)
-        self.mode = mode
+        self.mode = mode if mode == 'test' else 'train'
         self.target = target
 
         if txt_path is None and txt_dir is not None:
