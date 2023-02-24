@@ -1,4 +1,5 @@
 # BandSplitRNN Pytorch
+
 An unofficial PyTorch implementation of the paper [Music Source Separation with Band-split RNN](https://arxiv.org/pdf/2209.15174.pdf).
 
 ---
@@ -9,16 +10,65 @@ To install dependencies please run:
 ```
 pip install -r requirements.txt
 ```
-Additionally, **ffmpeg** should be installed in the venv.
+Additionally, **ffmpeg** should be installed in the venv.  
+If using ``conda``, please run:
 ```
 conda install -c conda-forge ffmpeg
 ```
+
 ---
 # TODOs
+
 1. Add augmentations
 2. Train
 3. Delete non-useful gradnorms in logger 
 4. Add repo structure in README.md
+
+---
+# Preparing the dataset
+
+bla-bla
+
+---
+# Train and validate
+
+bla-bla
+
+---
+# Inference
+
+bla-bla
+
+---
+# Repository structure
+The structure of this repository is as following:
+```
+├── src
+│   ├── conf
+│   │   └── **/*.yaml
+│   ├── data
+│   │   ├── __init__.py
+│   │   ├── augmentations.py
+│   │   ├── dataset.py
+│   │   ├── preprocessing.py
+│   │   └── utils.py
+│   ├── files
+│   │   └── *.txt
+│   ├── model
+│   │   ├── modules
+│   │   │   ├── __init__.py
+│   │   │   ├── bandsequence.py
+│   │   │   ├── bandsplit.py
+│   │   │   ├── maskestimation.py
+│   │   │   └── utils.py
+│   │   ├── __init__.py
+│   │   └── bandsplitrnn.py
+├── example
+│   └── *.wav
+├── .gitignore
+├── README.md 
+└── requirement.txt
+```
 ---
 To cite the paper, please use:
 ```
