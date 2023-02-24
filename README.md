@@ -21,8 +21,9 @@ conda install -c conda-forge ffmpeg
 
 1. Add augmentations
 2. Train
-3. Delete useless gradnorms in logger 
-4. Add repo structure in README.md
+3. Delete useless gradnorms in logger
+4. Add test.py pipeline
+4. Add inference.py pipeline
 
 ---
 # Repository structure
@@ -56,7 +57,7 @@ The structure of this repository is as following:
 ```
 
 ---
-# Preparing the dataset
+# Dataset preprocessing
 
 Authors used MUSDB18-HQ dataset to train an initial source separation model.
 You can access it via [zenodo](https://zenodo.org/record/3338373#.Y_jrMC96D5g).
@@ -88,18 +89,18 @@ Output is saved to `{OUTPUT_DIR}/{TARGET}_{SUBSET}.txt` file. The structure of f
 ```
 
 ---
-# Train
+# Training
 
 To train the model combination of `pytorch-lightning` and `hydra` was used.
 All configuration files are stored in `src/conf` directory in `hydra`-friendly format.
 
-To start training a model with given configurations, you need simply write:
+To start training a model with given configurations, please use the following script:
 ```
 export CUDA_VISIBLE_DEVICES={DEVICES} && python train.py
 ```
-To configure training process please follow `hydra` [instructions](https://hydra.cc/docs/advanced/override_grammar/basic/).
+To configure training process follow `hydra` [instructions](https://hydra.cc/docs/advanced/override_grammar/basic/).
 
-With given configurations, the log folder will be created for a particular experiment with following path.
+With given configurations, the log folder will be created for a particular experiment with a following path:
 ```
 src/logs/bandsplitrnn/${now:%Y-%m-%d}_${now:%H-%M}/
 ```
@@ -114,12 +115,19 @@ This folder will have a following structure:
 ```
 
 ---
+# Evaluation
+
+bla-bla
+
+---
 # Inference
 
 bla-bla
 
 ---
-To cite the paper, please use:
+# Citing
+
+To cite this paper, please use:
 ```
 @misc{https://doi.org/10.48550/arxiv.2209.15174,
   doi = {10.48550/ARXIV.2209.15174},

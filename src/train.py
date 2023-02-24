@@ -1,4 +1,3 @@
-import os
 import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
@@ -15,6 +14,10 @@ from pl_model import PLModel
 
 from typing import Tuple
 from torch.optim import Optimizer, lr_scheduler
+
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def initialize_loaders(cfg: DictConfig) -> Tuple[DataLoader, DataLoader]:
@@ -96,18 +99,18 @@ def initialize_utils(
 def my_app(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
 
-    # initializing loaders, featurizers
+    log.info("Initializing loaders, featurizers.")
     train_loader, val_loader = initialize_loaders(cfg)
     featurizer, inverse_featurizer = initialize_featurizer(cfg)
     # TODO: augmentations = initialize_augmentations(cfg)
 
-    # initializing model, optimizer, and scheduler
+    log.info("Initializing model, optimizer, scheduler.")
     model, opt, sch = initialize_model(cfg)
 
-    # initialize other stuff
+    log.info("Initializing Lightning logger and callbacks.")
     logger, callbacks = initialize_utils(cfg)
 
-    # initialize lightning model and trainer
+    log.info("Initializing Lightning modules.")
     plmodel = PLModel(
         model,
         featurizer, inverse_featurizer,
@@ -121,11 +124,16 @@ def my_app(cfg: DictConfig) -> None:
     )
 
     # fit model
-    trainer.fit(
-        plmodel,
-        train_dataloaders=train_loader,
-        val_dataloaders=val_loader
-    )
+    log.info("Starting training...")
+    try:
+        trainer.fit(
+            plmodel,
+            train_dataloaders=train_loader,
+            val_dataloaders=val_loader
+        )
+    except Exception as e:
+        log.error(str(e))
+        raise e
 
 
 if __name__ == "__main__":
