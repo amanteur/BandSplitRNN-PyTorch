@@ -45,6 +45,7 @@ trainer:
   track_grad_norm: 2
   precision: 32
   enable_progress_bar: True
+  default_hp_metric: False
 
 hydra:
   run:

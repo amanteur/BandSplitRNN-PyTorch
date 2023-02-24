@@ -1,11 +1,11 @@
-from data import SAD
+import argparse
 import musdb
 import torch
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 from pathlib import Path
-
 from typing import Iterable, Optional, List
 from tqdm import tqdm
+from data import SAD
 
 
 def prepare_save_line(
@@ -26,7 +26,7 @@ def run_program(
         target: str,
         db: musdb.DB,
         sad: SAD,
-):
+) -> None:
     """
     Saves track's name and fragments indices to provided .txt file.
     """
@@ -51,9 +51,10 @@ def main(
         subset: str,
         split: Optional[str],
         targets: List[str],
-        cfg_sad: OmegaConf
-):
+        sad_cfg_path: DictConfig
+) -> None:
     # initialize MUSDB parser
+    split = None if subset == 'test' else split
     db = musdb.DB(
         root=db_dir,
         subsets=subset,
@@ -62,7 +63,8 @@ def main(
         is_wav=True,
     )
     # initialize Source Activity Detector
-    sad = SAD(**cfg_sad)
+    sad_cfg = OmegaConf.load(sad_cfg_path)
+    sad = SAD(**sad_cfg)
 
     # initialize directories where to save indices
     save_dir = Path(save_dir)
@@ -82,20 +84,57 @@ def main(
 
 
 if __name__ == '__main__':
-    # TODO: Add argparse
-    db_dir = '../../../datasets/musdb18hq'
-    save_dir = '../src/files/'
-    subset = 'train'  # 'test'
-    split = 'valid'  # 'valid'
-    targets = ['vocals']
-    cfg_sad = OmegaConf.load('./conf/sad/default.yaml')
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-i',
+        '--input-dir',
+        type=str,
+        required=True,
+        help="Path to directory with musdb18 dataset"
+    )
+    parser.add_argument(
+        '-o',
+        '--output-dir',
+        type=str,
+        required=True,
+        help="Path to directory where output .txt file is saved"
+    )
+    parser.add_argument(
+        '--subset',
+        type=str,
+        required=False,
+        default='train',
+        help="Train/test subset of dataset to process"
+    )
+    parser.add_argument(
+        '--split',
+        type=str,
+        required=False,
+        default='train',
+        help="Train/valid split of train dataset. Used if subset=train"
+    )
+    parser.add_argument(
+        '--sad-cfg-path',
+        type=str,
+        required=False,
+        default="./conf/sad/default.yaml",
+        help="Path to Source Activity Detection config file"
+    )
+    parser.add_argument(
+        '-t',
+        '--targets',
+        nargs='+',
+        required=False,
+        default=["vocals"],
+        help="Target source. SAD will save salient fragments of vocal audio."
+    )
+    args = parser.parse_args()
 
     main(
-        db_dir,
-        save_dir,
-        subset,
-        split,
-        targets,
-        cfg_sad,
+        args.db_dir,
+        args.save_dir,
+        args.subset,
+        args.split,
+        args.targets,
+        args.sad_cfg_path,
     )
