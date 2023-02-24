@@ -3,7 +3,33 @@
 An unofficial PyTorch implementation of the paper [Music Source Separation with Band-split RNN](https://arxiv.org/pdf/2209.15174.pdf).
 
 ---
-# Dependecies
+## Table of Contents
+0. [TODOs](#todos)
+1. [Dependencies](#dependencies)
+2. [Repository structure](#structure)
+3. [Dataset preprocessing](#preprocessing)
+4. [Training](#train)
+5. [Evaluation](#eval)
+6. [Inference](#inference)
+7. [Citing](#cite)
+
+
+
+---
+<a name="todos"/>
+
+## TODOs
+
+1. Add augmentations
+2. Train
+3. Delete useless gradnorms in logger
+4. Add test.py pipeline
+5. Add inference.py pipeline
+
+---
+<a name="dependencies"/>
+
+# Dependencies
 
 Python version - **3.10**.  
 To install dependencies please run:
@@ -17,16 +43,9 @@ conda install -c conda-forge ffmpeg
 ```
 
 ---
-# TODOs
+<a name="structure"/>
 
-1. Add augmentations
-2. Train
-3. Delete useless gradnorms in logger
-4. Add test.py pipeline
-4. Add inference.py pipeline
-
----
-# Repository structure
+## Repository structure
 The structure of this repository is as following:
 ```
 ├── src
@@ -57,7 +76,9 @@ The structure of this repository is as following:
 ```
 
 ---
-# Dataset preprocessing
+<a name="preprocessing"/>
+
+## Dataset preprocessing
 
 Authors used MUSDB18-HQ dataset to train an initial source separation model.
 You can access it via [zenodo](https://zenodo.org/record/3338373#.Y_jrMC96D5g).
@@ -89,7 +110,9 @@ Output is saved to `{OUTPUT_DIR}/{TARGET}_{SUBSET}.txt` file. The structure of f
 ```
 
 ---
-# Training
+<a name="train"/>
+
+## Training
 
 To train the model combination of `pytorch-lightning` and `hydra` was used.
 All configuration files are stored in `src/conf` directory in `hydra`-friendly format.
@@ -115,17 +138,23 @@ This folder will have a following structure:
 ```
 
 ---
-# Evaluation
+<a name="eval"/>
+
+## Evaluation
 
 bla-bla
 
 ---
-# Inference
+<a name="inference"/>
+
+## Inference
 
 bla-bla
 
 ---
-# Citing
+<a name="cite"/>
+
+## Citing
 
 To cite this paper, please use:
 ```
