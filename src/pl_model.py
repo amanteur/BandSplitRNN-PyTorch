@@ -54,8 +54,8 @@ class PLModel(pl.LightningModule):
 
         # logging
         for k in loss_dict:
-            self.log("train/{k}", loss_dict[k])
-        self.log("train/loss", loss, prog_bar=True)
+            self.log(f"train/{k}", loss_dict[k])
+        self.log("train/loss", loss)
 
         return loss
 
@@ -69,7 +69,7 @@ class PLModel(pl.LightningModule):
 
         # logging
         for k in loss_dict:
-            self.log("val/{k}", loss_dict[k])
+            self.log(f"val/{k}", loss_dict[k])
         self.log("val/loss", loss, prog_bar=True)
 
         return loss
@@ -92,3 +92,9 @@ class PLModel(pl.LightningModule):
 
     def configure_optimizers(self):
         return [self.opt], [self.sch]
+
+    def get_progress_bar_dict(self):
+        tqdm_dict = super().get_progress_bar_dict()
+        if 'v_num' in tqdm_dict:
+            del tqdm_dict['v_num']
+        return tqdm_dict

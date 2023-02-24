@@ -15,14 +15,12 @@ conda install -c conda-forge ffmpeg
 ```
 ---
 # TODOs
-1. Finish train pipeline
-2. Train and validate
-3. Test
-4. Build inference pipeline
-5. Add requirements.txt
-6. Fill README.md
+1. Add augmentations
+2. Train
+3. Delete non-useful gradnorms in logger 
+4. Add repo structure in README.md
 ---
-To cite, please use:
+To cite the paper, please use:
 ```
 @misc{https://doi.org/10.48550/arxiv.2209.15174,
   doi = {10.48550/ARXIV.2209.15174},

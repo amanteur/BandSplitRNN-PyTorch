@@ -1,5 +1,4 @@
 import torch
-import einops
 from typing import Optional
 
 

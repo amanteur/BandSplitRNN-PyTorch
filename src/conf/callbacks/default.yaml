@@ -11,3 +11,8 @@ model_ckpt:
   filename: 'epoch{epoch:02d}-val_loss{val/loss:.2f}'
   auto_insert_metric_name: False
 
+early_stop:
+  _target_: pytorch_lightning.callbacks.EarlyStopping
+  monitor: 'val/loss'
+  mode: "min"
+  patience: 10

@@ -48,7 +48,7 @@ trainer:
 
 hydra:
   run:
-    dir: logs/bandsplitrnn/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: logs/bandsplitrnn/${now:%Y-%m-%d}_${now:%H-%M}
   job:
     chdir: False
 
