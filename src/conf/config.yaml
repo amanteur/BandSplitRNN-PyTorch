@@ -14,10 +14,12 @@ train_loader:
   batch_size: 2
   num_workers: 4
   shuffle: True
+  drop_last: True
 val_loader:
   batch_size: 2
   num_workers: 4
   shuffle: False
+  drop_last: False
 
 # optimizer and scheduler
 opt:
@@ -46,14 +48,14 @@ trainer:
   accelerator: "cpu"
   devices: 1
   gradient_clip_val: 5
-  track_grad_norm: 2
   precision: 32
   enable_progress_bar: True
 
 
+experiment_dirname: bandsplitrnn
 hydra:
   run:
-    dir: logs/bandsplitrnn/${now:%Y-%m-%d}_${now:%H-%M}
+    dir: logs/${...experiment_dirname}/${now:%Y-%m-%d}_${now:%H-%M}
   job:
     chdir: False
 

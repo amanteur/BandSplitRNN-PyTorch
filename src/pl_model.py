@@ -12,7 +12,7 @@ class PLModel(pl.LightningModule):
             model: nn.Module,
             featurizer: nn.Module,
             inverse_featurizer: nn.Module,
-            augs: nn.Module,
+            augmentations: nn.Module,
             opt: Optimizer,
             sch: lr_scheduler._LRScheduler,
             hparams: DictConfig
@@ -20,7 +20,7 @@ class PLModel(pl.LightningModule):
         super().__init__()
 
         # augmentations
-        self.augmentations = augs
+        self.augmentations = augmentations
 
         # featurizers
         self.featurizer = featurizer
@@ -120,6 +120,23 @@ class PLModel(pl.LightningModule):
 
     def get_progress_bar_dict(self):
         tqdm_dict = super().get_progress_bar_dict()
-        if 'v_num' in tqdm_dict:
-            del tqdm_dict['v_num']
+        tqdm_dict.pop("v_num", None)
         return tqdm_dict
+
+
+class GradNormCallback(pl.Callback):
+    """
+    Logs the gradient norm.
+    """
+    def on_after_backward(self, trainer, model):
+        model.log("my_model/grad_norm", self.gradient_norm(model))
+
+    @staticmethod
+    def gradient_norm(model):
+        total_norm = 0.0
+        for p in model.parameters():
+            if p.grad is not None:
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+        total_norm = total_norm ** (1. / 2)
+        return total_norm

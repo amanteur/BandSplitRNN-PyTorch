@@ -1,0 +1,16 @@
+sr: 44100
+n_fft: 2048
+bandsplits:
+  - [500, 50]
+  - [1000, 100]
+  - [4000, 500]
+  - [8000, 1000]
+  - [16000, 2000]
+t_timesteps: 259
+fc_dim: 128
+rnn_dim: 256
+rnn_type: "LSTM"
+bidirectional: True
+num_layers: 1 # 12
+mlp_dim: 512
+return_mask: False

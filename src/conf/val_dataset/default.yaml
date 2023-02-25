@@ -1,6 +1,6 @@
-file_dir: "/Users/amanturamatov/PythonProjects/datasets/musdb18hq/"
+file_dir: ${oc.env:MUSDB_DIR, "/Users/amanturamatov/PythonProjects/datasets/musdb18hq/"}
 txt_dir: "files/"
 txt_path: null
-target: vocals
+target: ${..train_dataset.target}
 mode: valid
 is_mono: False

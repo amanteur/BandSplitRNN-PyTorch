@@ -109,7 +109,7 @@ def initialize_utils(
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def my_app(cfg: DictConfig) -> None:
-    print(OmegaConf.to_yaml(cfg))
+    log.info(OmegaConf.to_yaml(cfg))
 
     log.info("Initializing loaders, featurizers.")
     train_loader, val_loader = initialize_loaders(cfg)
@@ -136,7 +136,6 @@ def my_app(cfg: DictConfig) -> None:
         callbacks=callbacks,
     )
 
-    # fit model
     log.info("Starting training...")
     try:
         trainer.fit(
