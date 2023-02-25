@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.optim import Optimizer, lr_scheduler
-from typing import Dict
+from typing import Tuple, Dict
 from omegaconf import DictConfig
 
 
@@ -12,11 +12,15 @@ class PLModel(pl.LightningModule):
             model: nn.Module,
             featurizer: nn.Module,
             inverse_featurizer: nn.Module,
+            augs: nn.Module,
             opt: Optimizer,
             sch: lr_scheduler._LRScheduler,
             hparams: DictConfig
     ):
         super().__init__()
+
+        # augmentations
+        self.augmentations = augs
 
         # featurizers
         self.featurizer = featurizer
@@ -39,18 +43,23 @@ class PLModel(pl.LightningModule):
 
     def on_after_batch_transfer(
             self, batch, dataloader_idx
-    ) -> Dict[str, torch.Tensor]:
-        for k in batch:
-            batch[k] = self.featurizer(batch[k])
+    ) -> torch.Tensor:
+        """
+        Input shape: [batch_size, n_sources, n_channels, time]
+        Output shape: [batch_size, n_sources, n_channels, freq, time]
+        """
+        batch = self.augmentations(batch)
+        batch = self.featurizer(batch)
         return batch
 
     def training_step(
             self, batch, batch_idx
     ) -> torch.Tensor:
-        mix, tgt = batch['mix'], batch['tgt']
-        mix = self.model(mix)
-        loss_dict = self.compute_losses(mix, tgt)
-        loss = sum(loss_dict.values())
+        """
+        Input shape: [batch_size, n_sources, n_channels, freq, time]
+        Output: loss
+        """
+        loss_dict, loss = self.step(batch)
 
         # logging
         for k in loss_dict:
@@ -62,11 +71,7 @@ class PLModel(pl.LightningModule):
     def validation_step(
             self, batch, batch_idx
     ) -> torch.Tensor:
-        mix, tgt = batch['mix'], batch['tgt']
-        mix = self.model(mix)
-        loss_dict = self.compute_losses(mix, tgt)
-        loss = sum(loss_dict.values())
-
+        loss_dict, loss = self.step(batch)
         # logging
         for k in loss_dict:
             self.log(f"val/{k}", loss_dict[k])
@@ -74,15 +79,35 @@ class PLModel(pl.LightningModule):
 
         return loss
 
-    def compute_losses(self, mix, tgt):
+    def step(
+            self, batch
+    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
+
+        mix, tgt = batch[:, 0], batch[:, 1]
+        tgt_pred = self.model(mix)
+        loss_dict = self.compute_losses(tgt_pred, tgt)
+        loss = sum(loss_dict.values())
+
+        return loss_dict, loss
+
+    def compute_losses(
+            self,
+            tgt_pred: torch.Tensor,
+            tgt_real: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
         # frequency domain
-        lossR = self.mae_specR(mix.real, tgt.real)
-        lossI = self.mae_specI(mix.imag, tgt.imag)
+        lossR = self.mae_specR(
+            tgt_pred.real, tgt_real.real
+        )
+        lossI = self.mae_specI(
+            tgt_pred.imag, tgt_real.imag
+        )
 
         # time domain
-        mix = self.inverse_featurizer(mix)
-        tgt = self.inverse_featurizer(tgt)
-        lossT = self.mae_time(mix, tgt)
+        lossT = self.mae_time(
+            self.inverse_featurizer(tgt_pred),
+            self.inverse_featurizer(tgt_real)
+        )
 
         return {
             "lossSpecR": lossR,

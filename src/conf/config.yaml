@@ -4,6 +4,7 @@ defaults:
   - train_dataset: default
   - val_dataset: default
   - sad: default
+  - augmentations: default
   - featurizer: stft
   - callbacks: default
   - _self_
@@ -12,9 +13,11 @@ defaults:
 train_loader:
   batch_size: 2
   num_workers: 4
+  shuffle: True
 val_loader:
   batch_size: 2
   num_workers: 4
+  shuffle: False
 
 # optimizer and scheduler
 opt:
@@ -32,9 +35,10 @@ logger:
   save_dir: "/tb_logs"
   name: ""
   version: ""
+  default_hp_metric: False
 
 trainer:
-  fast_dev_run: False
+  fast_dev_run: True
   max_epochs: 100
   check_val_every_n_epoch: 1
   num_sanity_val_steps: 2
@@ -45,7 +49,7 @@ trainer:
   track_grad_norm: 2
   precision: 32
   enable_progress_bar: True
-  default_hp_metric: False
+
 
 hydra:
   run:

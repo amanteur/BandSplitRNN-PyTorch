@@ -6,10 +6,11 @@ bandsplits:
   - [8000, 500]
   - [16000, 1000]
   - [20000, 2000]
-t_timesteps: 517
+t_timesteps: 259
 fc_dim: 128
 rnn_dim: 256
 rnn_type: "LSTM"
 bidirectional: True
 num_layers: 1 # 12
 mlp_dim: 512
+return_mask: False

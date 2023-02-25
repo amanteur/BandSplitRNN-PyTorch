@@ -57,6 +57,17 @@ def initialize_featurizer(
     return featurizer, inv_featurizer
 
 
+def initialize_augmentations(
+        cfg: DictConfig
+) -> nn.Module:
+    """
+    Initializes augmentations.
+    """
+    augs = instantiate(cfg.augmentations)
+    augs = nn.Sequential(*augs.values())
+    return augs
+
+
 def initialize_model(
         cfg: DictConfig
 ) -> Tuple[nn.Module, Optimizer, lr_scheduler._LRScheduler]:
@@ -85,10 +96,11 @@ def initialize_utils(
         cfg: DictConfig
 ):
     # change model and logs saving directory to logging directory of hydra
-    hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
-    save_dir = hydra_cfg['runtime']['output_dir']
-    cfg.logger.save_dir = save_dir + cfg.logger.save_dir
-    cfg.callbacks.model_ckpt.dirpath = save_dir + cfg.callbacks.model_ckpt.dirpath
+    if HydraConfig.instance().cfg is not None:
+        hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
+        save_dir = hydra_cfg['runtime']['output_dir']
+        cfg.logger.save_dir = save_dir + cfg.logger.save_dir
+        cfg.callbacks.model_ckpt.dirpath = save_dir + cfg.callbacks.model_ckpt.dirpath
     # initialize logger and callbacks
     logger = instantiate(cfg.logger)
     callbacks = list(instantiate(cfg.callbacks).values())
@@ -102,7 +114,7 @@ def my_app(cfg: DictConfig) -> None:
     log.info("Initializing loaders, featurizers.")
     train_loader, val_loader = initialize_loaders(cfg)
     featurizer, inverse_featurizer = initialize_featurizer(cfg)
-    # TODO: augmentations = initialize_augmentations(cfg)
+    augs = initialize_augmentations(cfg)
 
     log.info("Initializing model, optimizer, scheduler.")
     model, opt, sch = initialize_model(cfg)
@@ -114,6 +126,7 @@ def my_app(cfg: DictConfig) -> None:
     plmodel = PLModel(
         model,
         featurizer, inverse_featurizer,
+        augs,
         opt, sch,
         cfg
     )

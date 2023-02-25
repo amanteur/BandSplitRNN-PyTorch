@@ -64,13 +64,21 @@ class BandSplitRNN(nn.Module):
     def forward(self, x: torch.Tensor):
         """
         Input and output are T-F complex-valued features.
-        Input shape: batch_size, 1, freq, time]
-        Output shape: batch_size, 1, freq, time]
+        Input shape: batch_size, n_channels, freq, time]
+        Output shape: batch_size, n_channels, freq, time]
         """
+        B, C, F, T = x.shape
+
+        if C > 1:
+            x = x.reshape(B*C, 1, F, T)
         # compute T-F mask
         mask = self.compute_mask(x)
         # multiply with original tensor
         x = mask * x
+
+        if C > 1:
+            x = x.reshape(B, C, F, T)
+            mask = mask.reshape(B, C, F, T)
 
         if self.return_mask:
             return x, mask
@@ -78,7 +86,7 @@ class BandSplitRNN(nn.Module):
 
 
 if __name__ == '__main__':
-    batch_size, n_channels, freq, time = 1, 1, 1025, 517
+    batch_size, n_channels, freq, time = 2, 2, 1025, 259
     in_features = torch.rand(batch_size, n_channels, freq, time, dtype=torch.cfloat)
     cfg = {
         "sr": 44100,
@@ -90,13 +98,14 @@ if __name__ == '__main__':
             (16000, 1000),
             (20000, 2000),
         ],
-        "t_timesteps": 517,
+        "t_timesteps": 259,
         "fc_dim": 128,
         "rnn_dim": 256,
         "rnn_type": "LSTM",
         "bidirectional": True,
         "num_layers": 1, # 12,
         "mlp_dim": 512,
+        "return_mask": False,
     }
     model = BandSplitRNN(**cfg)
     _ = model.eval()

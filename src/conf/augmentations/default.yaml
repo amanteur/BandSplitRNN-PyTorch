@@ -1,0 +1,17 @@
+randomcrop:
+  _target_: data.augmentations.RandomCrop
+  p: 1.0
+  chunk_size_sec: 3
+  sr: 44100
+
+gainscale:
+  _target_: data.augmentations.GainScale
+  p: 1.0
+  min_db: -10.
+  max_db: 10.
+
+mix:
+  _target_: data.augmentations.Mix
+  p: 0.5
+  min_db: 0.
+  max_db: 5.
