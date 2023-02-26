@@ -41,25 +41,17 @@ class PLModel(pl.LightningModule):
         # logging
         self.save_hyperparameters(hparams)
 
-    def on_after_batch_transfer(
-            self, batch, dataloader_idx
-    ) -> torch.Tensor:
-        """
-        Input shape: [batch_size, n_sources, n_channels, time]
-        Output shape: [batch_size, n_sources, n_channels, freq, time]
-        """
-        batch = self.augmentations(batch)
-        batch = self.featurizer(batch)
-        return batch
+        # other
+        self.tracked_gradient_global_only()
 
     def training_step(
             self, batch, batch_idx
     ) -> torch.Tensor:
         """
-        Input shape: [batch_size, n_sources, n_channels, freq, time]
+        Input shape: [batch_size, n_sources, n_channels, time]
         Output: loss
         """
-        loss_dict, loss = self.step(batch)
+        loss, loss_dict = self.step(batch)
 
         # logging
         for k in loss_dict:
@@ -71,7 +63,7 @@ class PLModel(pl.LightningModule):
     def validation_step(
             self, batch, batch_idx
     ) -> torch.Tensor:
-        loss_dict, loss = self.step(batch)
+        loss, loss_dict = self.step(batch)
         # logging
         for k in loss_dict:
             self.log(f"val/{k}", loss_dict[k])
@@ -81,39 +73,51 @@ class PLModel(pl.LightningModule):
 
     def step(
             self, batch
-    ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor]:
-
-        mix, tgt = batch[:, 0], batch[:, 1]
-        tgt_pred = self.model(mix)
-        loss_dict = self.compute_losses(tgt_pred, tgt)
-        loss = sum(loss_dict.values())
-
-        return loss_dict, loss
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+        """
+        Input shape: [batch_size, n_sources, n_channels, time]
+        """
+        # augmentations
+        batch = self.augmentations(batch)
+        tgt_time = batch[:, 1]
+        # STFT
+        batch = self.featurizer(batch)
+        mix_freq, tgt_freq = batch[:, 0], batch[:, 1]
+        # apply model
+        tgt_freq_hat = self.model(mix_freq)
+        tgt_time_hat = self.inverse_featurizer(tgt_freq_hat, length=tgt_time.shape[-1])
+        # compute loss
+        loss, loss_dict = self.compute_losses(
+            tgt_freq_hat, tgt_freq,
+            tgt_time_hat, tgt_time
+        )
+        return loss, loss_dict
 
     def compute_losses(
             self,
-            tgt_pred: torch.Tensor,
-            tgt_real: torch.Tensor
-    ) -> Dict[str, torch.Tensor]:
+            tgt_freq_hat: torch.Tensor,
+            tgt_freq: torch.Tensor,
+            tgt_time_hat: torch.Tensor,
+            tgt_time: torch.Tensor,
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         # frequency domain
         lossR = self.mae_specR(
-            tgt_pred.real, tgt_real.real
+            tgt_freq_hat.real, tgt_freq.real
         )
         lossI = self.mae_specI(
-            tgt_pred.imag, tgt_real.imag
+            tgt_freq_hat.imag, tgt_freq.imag
         )
-
         # time domain
         lossT = self.mae_time(
-            self.inverse_featurizer(tgt_pred),
-            self.inverse_featurizer(tgt_real)
+            tgt_time_hat, tgt_time
         )
-
-        return {
+        loss_dict = {
             "lossSpecR": lossR,
             "lossSpecI": lossI,
             "lossTime": lossT
         }
+        loss = sum(loss_dict.values())
+        return loss, loss_dict
 
     def configure_optimizers(self):
         return [self.opt], [self.sch]
@@ -123,20 +127,15 @@ class PLModel(pl.LightningModule):
         tqdm_dict.pop("v_num", None)
         return tqdm_dict
 
-
-class GradNormCallback(pl.Callback):
-    """
-    Logs the gradient norm.
-    """
-    def on_after_backward(self, trainer, model):
-        model.log("my_model/grad_norm", self.gradient_norm(model))
-
     @staticmethod
-    def gradient_norm(model):
-        total_norm = 0.0
-        for p in model.parameters():
-            if p.grad is not None:
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
-        total_norm = total_norm ** (1. / 2)
-        return total_norm
+    def tracked_gradient_global_only():
+        def remove_per_weight_norms(func):
+            def f(*args):
+                norms = func(*args)
+
+                norms = dict(filter(lambda elem: '_total' in elem[0], norms.items()))
+
+                return norms
+
+            return f
+        pl.utilities.grad_norm = remove_per_weight_norms(pl.utilities.grad_norm)

@@ -1,7 +1,7 @@
 import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
-from hydra.utils import instantiate, get_original_cwd
+from hydra.utils import instantiate
 
 import torch
 import torch.nn as nn
@@ -52,8 +52,12 @@ def initialize_featurizer(
     """
     Initializes direct and inverse featurizers for audio.
     """
-    featurizer = instantiate(cfg.featurizer.direct_transform)
-    inv_featurizer = instantiate(cfg.featurizer.inverse_transform)
+    featurizer = instantiate(
+        cfg.featurizer.direct_transform,
+    )
+    inv_featurizer = instantiate(
+        cfg.featurizer.inverse_transform,
+    )
     return featurizer, inv_featurizer
 
 

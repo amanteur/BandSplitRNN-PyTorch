@@ -1,3 +1,3 @@
 from .preprocessing import SAD
-from .dataset import SourceSeparationDataset
-from .utils import collate_fn
+from .dataset import SourceSeparationDataset, TestSourceSeparationDataset
+from .utils import collate_fn, collate_fn_test

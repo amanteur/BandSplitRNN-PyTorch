@@ -22,6 +22,7 @@ An unofficial PyTorch implementation of the paper [Music Source Separation with 
 ## TODOs
 
 - Train
+- Add random seed control
 - Add test.py pipeline 
 - Add inference.py pipeline
 
@@ -87,6 +88,8 @@ The structure of this repository is as following:
 ## Train your model
 
 In this section model training pipeline is described.
+
+---
 
 <a name="preprocessing"/>
 
