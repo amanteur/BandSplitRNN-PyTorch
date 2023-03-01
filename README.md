@@ -6,13 +6,13 @@ An unofficial PyTorch implementation of the paper [Music Source Separation with 
 ## Table of Contents
 0. [TODOs](#todos)
 1. [Dependencies](#dependencies)
-2. [Fast Start](#faststart)
-3. [Repository structure](#structure)
-4. [Train you model](#trainmodel)
+2. [Quick Start](#quickstart)
+3. [Train you model](#trainmodel)
    1. [Dataset preprocessing](#preprocessing)
    2. [Training](#train)
    3. [Evaluation](#eval)
-8. [Citing](#cite)
+4. [Repository structure](#structure)
+5. [Citing](#cite)
 
 
 
@@ -22,7 +22,8 @@ An unofficial PyTorch implementation of the paper [Music Source Separation with 
 ## TODOs
 
 - Train
-- Add random seed control
+- Add random 
+- seed control
 - Add test.py pipeline 
 - Add inference.py pipeline
 
@@ -43,44 +44,11 @@ conda install -c conda-forge ffmpeg
 ```
 
 ---
-<a name="faststart"/>
+<a name="quickstart"/>
 
-## Fast Start
+## Quick Start
 
 bla-bla
-
----
-<a name="structure"/>
-
-## Repository structure
-The structure of this repository is as following:
-```
-├── src
-│   ├── conf                        - hydra configuration files
-│   │   └── **/*.yaml               
-│   ├── data                        - directory with data processing modules
-│   │   ├── __init__.py             
-│   │   ├── augmentations.py
-│   │   ├── dataset.py
-│   │   ├── preprocessing.py
-│   │   └── utils.py
-│   ├── files                       - output files from prepare_dataset.py script
-│   │   └── *.txt
-│   ├── model                       - directory with neural networks modules 
-│   │   ├── modules
-│   │   │   ├── __init__.py
-│   │   │   ├── bandsequence.py
-│   │   │   ├── bandsplit.py
-│   │   │   ├── maskestimation.py
-│   │   │   └── utils.py
-│   │   ├── __init__.py
-│   │   └── bandsplitrnn.py
-├── example                         - test example for inference.py
-│   └── *.wav
-├── .gitignore
-├── README.md 
-└── requirement.txt
-```
 
 ---
 <a name="trainmodel"/>
@@ -168,6 +136,39 @@ This folder will have a following structure:
 ### Evaluation
 
 bla-bla
+
+---
+<a name="structure"/>
+
+## Repository structure
+The structure of this repository is as following:
+```
+├── src
+│   ├── conf                        - hydra configuration files
+│   │   └── **/*.yaml               
+│   ├── data                        - directory with data processing modules
+│   │   ├── __init__.py             
+│   │   ├── augmentations.py
+│   │   ├── dataset.py
+│   │   ├── preprocessing.py
+│   │   └── utils.py
+│   ├── files                       - output files from prepare_dataset.py script
+│   │   └── *.txt
+│   ├── model                       - directory with neural networks modules 
+│   │   ├── modules
+│   │   │   ├── __init__.py
+│   │   │   ├── bandsequence.py
+│   │   │   ├── bandsplit.py
+│   │   │   ├── maskestimation.py
+│   │   │   └── utils.py
+│   │   ├── __init__.py
+│   │   └── bandsplitrnn.py
+├── example                         - test example for inference.py
+│   └── *.wav
+├── .gitignore
+├── README.md 
+└── requirement.txt
+```
 
 ---
 <a name="cite"/>
