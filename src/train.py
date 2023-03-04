@@ -150,6 +150,7 @@ def my_app(cfg: DictConfig) -> None:
     except Exception as e:
         log.error(str(e))
         raise e
+    log.info("Training finished!")
 
 
 if __name__ == "__main__":

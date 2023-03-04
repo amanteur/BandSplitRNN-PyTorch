@@ -1,5 +1,5 @@
 import torch
-from typing import List, Dict, Tuple
+from typing import List, Tuple
 
 
 def collate_fn(

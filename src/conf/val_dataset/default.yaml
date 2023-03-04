@@ -4,3 +4,4 @@ txt_path: null
 target: ${..train_dataset.target}
 mode: valid
 is_mono: False
+sr: 44100

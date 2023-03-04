@@ -1,5 +1,6 @@
 file_dir: ${oc.env:MUSDB_DIR, "/Users/amanturamatov/PythonProjects/datasets/musdb18hq/"}
 target: ${..train_dataset.target}
 is_mono: False
+sr: 44100
 win_size: 3
 hop_size: 0.5

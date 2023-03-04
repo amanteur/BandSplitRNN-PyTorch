@@ -4,3 +4,4 @@ txt_path: null
 target: vocals
 mode: train
 is_mono: False
+sr: 44100

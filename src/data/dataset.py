@@ -4,7 +4,7 @@ import torchaudio
 import torch.nn.functional as F
 
 from pathlib import Path
-from typing import List, Tuple, Optional, Dict, Union
+from typing import List, Tuple, Union
 
 
 class SourceSeparationDataset(Dataset):
@@ -20,10 +20,12 @@ class SourceSeparationDataset(Dataset):
             target: str = 'vocals',
             is_mono: bool = False,
             mode: str = 'train',  # valid
+            sr: int = 44100
     ):
         self.file_dir = Path(file_dir)
         self.mode = mode
         self.target = target
+        self.sr = sr
 
         if txt_path is None and txt_dir is not None:
             self.txt_path = Path(txt_dir) / f"{target}_{mode}.txt"
@@ -65,6 +67,7 @@ class SourceSeparationDataset(Dataset):
             num_frames=num_frames,
             channels_first=True
         )
+        assert sr == self.sr, f"Sampling rate should be equal {self.sr}, not {sr}."
         if self.is_mono:
             y = torch.mean(y, dim=0, keepdim=True)
         return y
@@ -115,6 +118,10 @@ class TestSourceSeparationDataset(Dataset):
         self.pad_size = self.win_size - self.hop_size
 
         self.filelist = self.get_filelist()
+
+        # initialized while testing
+        self.eval_step = None
+
 
     def get_filelist(self) -> List[Path]:
         filelist = []
