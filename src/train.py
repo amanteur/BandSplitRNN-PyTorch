@@ -9,8 +9,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from data import SourceSeparationDataset, collate_fn
-from model import BandSplitRNN
-from pl_model import PLModel
+from model import BandSplitRNN, PLModel
 
 from typing import Tuple
 from torch.optim import Optimizer, lr_scheduler

@@ -22,9 +22,6 @@ An unofficial PyTorch implementation of the paper [Music Source Separation with 
 ## TODOs
 
 - Train
-- Add random 
-- seed control
-- Add test.py pipeline 
 - Add inference.py pipeline
 
 ---
@@ -65,7 +62,9 @@ In this section model training pipeline is described.
 
 Authors used MUSDB18-HQ dataset to train an initial source separation model.
 You can access it via [zenodo](https://zenodo.org/record/3338373#.Y_jrMC96D5g).
-After downloading, set path to this dataset as an environmental variable:
+
+After downloading, set path to this dataset as an environmental variable 
+(you'll need to specify it before running `train` and `evaluation` pipelines):
 ```
 export MUSDB_DIR={MUSDB_DIR}
 ```
@@ -104,16 +103,16 @@ Output is saved to `{OUTPUT_DIR}/{TARGET}_{SUBSET}.txt` file. The structure of f
 To train the model combination of `pytorch-lightning` and `hydra` was used.
 All configuration files are stored in `src/conf` directory in `hydra`-friendly format.
 
-To start training a model with given configurations, use the following script:
+To start training a model with given configurations, just use the following script:
 ```
-export CUDA_VISIBLE_DEVICES={DEVICE_NUM} && python train.py
+python train.py
 ```
 To configure training process follow `hydra` [instructions](https://hydra.cc/docs/advanced/override_grammar/basic/).
 By default, model is trained to extract `vocals`. To train a model to extract other sources, use the following scripts:
 ```
-export CUDA_VISIBLE_DEVICES={DEVICE_NUM} && python train.py train_dataset.target=bass model=bandsplitrnnbass
-export CUDA_VISIBLE_DEVICES={DEVICE_NUM} && python train.py train_dataset.target=drums model=bandsplitrnndrums
-export CUDA_VISIBLE_DEVICES={DEVICE_NUM} && python train.py train_dataset.target=other
+python train.py train_dataset.target=bass model=bandsplitrnnbass
+python train.py train_dataset.target=drums model=bandsplitrnndrums
+python train.py train_dataset.target=other
 ```
 
 After training is started, the logging folder will be created for a particular experiment with a following path:
@@ -127,7 +126,9 @@ This folder will have a following structure:
 ├── weights
 │   └── *.ckpt                  - lightning model checkpoint files.
 └── hydra
-    └──config.yaml             - hydra configuration and override files 
+│   └──config.yaml              - hydra configuration and override files 
+└── train.log                   - logging file for train.py
+   
 ```
 
 ---
@@ -135,8 +136,25 @@ This folder will have a following structure:
 
 ### Evaluation
 
-bla-bla
+To start evaluating a model with given configurations, use the following script:
 
+```
+usage: evaluate.py [-h] -d RUN_DIR
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -d RUN_DIR, --run-dir RUN_DIR
+                        Path to directory with saved weights and configuration files
+```
+
+This script creates `test.log` in `RUN_DIR` directory and writes the `uSDR` and `cSDR` metrics there 
+for test subset of MUSDB18 dataset.
+
+---
+`Training`/`evaluation`/`inference` pipelines support GPU acceleration. To do so, specify the following env variable:
+```
+export CUDA_VISIBLE_DEVICES={DEVICE_NUM} 
+```
 ---
 <a name="structure"/>
 
@@ -147,22 +165,21 @@ The structure of this repository is as following:
 │   ├── conf                        - hydra configuration files
 │   │   └── **/*.yaml               
 │   ├── data                        - directory with data processing modules
-│   │   ├── __init__.py             
-│   │   ├── augmentations.py
-│   │   ├── dataset.py
-│   │   ├── preprocessing.py
-│   │   └── utils.py
+│   │   └── *.py
 │   ├── files                       - output files from prepare_dataset.py script
 │   │   └── *.txt
 │   ├── model                       - directory with neural networks modules 
 │   │   ├── modules
-│   │   │   ├── __init__.py
-│   │   │   ├── bandsequence.py
-│   │   │   ├── bandsplit.py
-│   │   │   ├── maskestimation.py
-│   │   │   └── utils.py
+│   │   │   └── *.py
 │   │   ├── __init__.py
-│   │   └── bandsplitrnn.py
+│   │   ├── bandsplitrnn.py         - file with the model itself
+│   │   └── pl_model.py             - file with Pytorch-Lightning Module for training and validation pipeline
+│   ├── utils                       - directory with utilities for evaluation and inference pipelines
+│   │   └── *.py                    
+│   ├── evaluate.py                 - script for evaluation pipeline 
+│   ├── inference.py                - script for inference pipeline
+│   ├── prepare_dataset.py          - script for dataset preprocessing pipeline
+│   └── train.py                    - script for training pipeline
 ├── example                         - test example for inference.py
 │   └── *.wav
 ├── .gitignore
