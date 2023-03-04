@@ -1,6 +1,17 @@
 import torch
-
 from typing import List, Tuple
+
+
+def get_fftfreq(
+        sr: int = 44100,
+        n_fft: int = 2048
+) -> torch.Tensor:
+    """
+    Torch workaround of librosa.fft_frequencies
+    """
+    out = sr * torch.fft.fftfreq(n_fft)[:n_fft // 2 + 1]
+    out[-1] = sr // 2
+    return out
 
 
 def get_subband_indices(
@@ -8,10 +19,10 @@ def get_subband_indices(
         splits: List[Tuple[int, int]],
 ) -> List[Tuple[int, int]]:
     """
+    Computes subband frequency indices with given bandsplits
     """
     indices = []
-    start_freq = 0
-    start_index = 0
+    start_freq, start_index = 0, 0
     for end_freq, step in splits:
         bands = torch.arange(start_freq + step, end_freq + step, step)
         start_freq = end_freq
@@ -23,24 +34,13 @@ def get_subband_indices(
     return indices
 
 
-def get_fftfreq(
-        sr: int = 44100,
-        n_fft: int = 2048
-) -> torch.Tensor:
-    """
-    Workaround of librosa.fft_frequencies
-    """
-    out = sr * torch.fft.fftfreq(n_fft)[:n_fft // 2 + 1]
-    out[-1] = sr // 2
-    return out
-
-
 def freq2bands(
         bandsplits: List[Tuple[int, int]],
         sr: int = 44100,
         n_fft: int = 2048
 ) -> List[Tuple[int, int]]:
     """
+    Returns start and end FFT indices of given bandsplits
     """
     freqs = get_fftfreq(sr=sr, n_fft=n_fft)
     band_indices = get_subband_indices(freqs, bandsplits)

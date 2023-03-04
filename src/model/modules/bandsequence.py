@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class RNNModule(nn.Module):
     """
-
+    RNN submodule of BandSequence module
     """
     def __init__(
             self,
@@ -54,6 +54,10 @@ class RNNModule(nn.Module):
 
 
 class BandSequenceModelModule(nn.Module):
+    """
+    BandSequence (2nd) Module of BandSplitRNN.
+    Runs input through n BiLSTMs in two dimensions - time and subbands.
+    """
     def __init__(
             self,
             k_subbands: int,

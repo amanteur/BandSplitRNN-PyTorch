@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from omegaconf import OmegaConf
 from collections import defaultdict
+from typing import Dict
 
 import numpy as np
 import torch
@@ -38,9 +39,12 @@ _ = torch.set_grad_enabled(False)
 
 
 def run_eval_loop(
-        model: nn.Module, dataset: Dataset,
-        featurizer: nn.Module, inverse_featurizer: nn.Module
-):
+        model: nn.Module,
+        dataset: Dataset,
+        featurizer: nn.Module,
+        inverse_featurizer: nn.Module
+) -> Dict[str, np.ndarray]:
+
     metrics = defaultdict(list)
 
     for b in dataset:
@@ -71,8 +75,10 @@ def run_eval(
         ckpt_dir_path: Path,
         model: nn.Module,
         dataset: Dataset,
-        featurizer: nn.Module, inverse_featurizer: nn.Module
-):
+        featurizer: nn.Module,
+        inverse_featurizer: nn.Module
+) -> None:
+
     for ckpt_path in ckpt_dir_path.glob("*.ckpt"):
         logger.info(f"Evaluating checkpoint - {ckpt_path.name}")
         state_dict = load_pl_state_dict(ckpt_path)

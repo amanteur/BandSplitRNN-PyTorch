@@ -49,7 +49,6 @@ class PLModel(pl.LightningModule):
     ) -> torch.Tensor:
         """
         Input shape: [batch_size, n_sources, n_channels, time]
-        Output: loss
         """
         loss, loss_dict = self.step(batch)
 

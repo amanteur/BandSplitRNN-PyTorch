@@ -6,6 +6,9 @@ from .utils import freq2bands
 
 
 class GLU(nn.Module):
+    """
+    GLU Activation Module.
+    """
     def __init__(self, input_dim: int):
         super(GLU, self).__init__()
         self.input_dim = input_dim
@@ -19,6 +22,9 @@ class GLU(nn.Module):
 
 
 class MLP(nn.Module):
+    """
+    Just a simple MLP with tanh activation (by default).
+    """
     def __init__(
             self,
             input_dim: int,
@@ -53,7 +59,8 @@ class MLP(nn.Module):
 
 class MaskEstimationModule(nn.Module):
     """
-
+    MaskEstimation (3rd) Module of BandSplitRNN.
+    Recreates from input initial subband dimensionality via running through LayerNorms+MLPs and forms the T-F mask.
     """
 
     def __init__(

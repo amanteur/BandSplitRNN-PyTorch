@@ -7,7 +7,7 @@ from .modules import BandSplitModule, BandSequenceModelModule, MaskEstimationMod
 
 class BandSplitRNN(nn.Module):
     """
-
+    BandSplitRNN as described in paper.
     """
     def __init__(
             self,
