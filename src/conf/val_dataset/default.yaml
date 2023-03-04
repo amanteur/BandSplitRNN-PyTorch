@@ -1,4 +1,4 @@
-file_dir: ${oc.env:MUSDB_DIR, "/Users/amanturamatov/PythonProjects/datasets/musdb18hq/"}
+file_dir: ${oc.env:MUSDB_DIR}
 txt_dir: "files/"
 txt_path: null
 target: ${..train_dataset.target}

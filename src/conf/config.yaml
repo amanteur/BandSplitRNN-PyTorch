@@ -44,9 +44,9 @@ trainer:
   fast_dev_run: True
   max_epochs: 100
   check_val_every_n_epoch: 1
-  num_sanity_val_steps: 2
-  log_every_n_steps: 50
-  accelerator: "cpu"
+  num_sanity_val_steps: 5
+  log_every_n_steps: 100
+  accelerator: "auto"
   devices: 1
   gradient_clip_val: 5
   precision: 32

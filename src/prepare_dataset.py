@@ -52,6 +52,7 @@ parser.add_argument(
     default=["vocals"],
     help="Target source. SAD will save salient fragments of vocal audio."
 )
+args = parser.parse_args()
 
 
 def prepare_save_line(
@@ -130,8 +131,6 @@ def main(
 
 
 if __name__ == '__main__':
-    args = parser.parse_args()
-
     main(
         args.db_dir,
         args.save_dir,
