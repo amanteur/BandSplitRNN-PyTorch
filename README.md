@@ -45,7 +45,36 @@ conda install -c conda-forge ffmpeg
 
 ## Quick Start
 
-bla-bla
+To run inference on your file(s), run the following script: 
+```
+usage: inference.py [-h] -i IN_PATH -o OUT_PATH [-t TARGET] [-c CKPT_PATH]
+
+options:
+  -h, --help            show this help message and exit
+  -i IN_PATH, --in-path IN_PATH
+                        Path to the input directory/file with .wav/.mp3 extensions.
+  -o OUT_PATH, --out-path OUT_PATH
+                        Path to the output directory. Files will be saved in .wav format with sr=44100.
+  -t TARGET, --target TARGET
+                        Name of the target source to extract.
+  -c CKPT_PATH, --ckpt-path CKPT_PATH
+                        Path to model's checkpoint. If not specified, the .ckpt from ${SAVED_MODELS_DIR}/{target} is used.
+
+```
+
+Available checkpoints:
+
+| Target     | Epoch | Validation Loss | cSDR | uSDR |
+|------------|-------|-----------------|------|------|
+| [Vocals]() |       |                 | ...  | ...  |
+| [Bass]()   |       |                 | ...  | ...  |
+| [Drums]()  |       |                 | ...  | ...  |
+| [Other]()  |       |                 | ...  | ...  |
+
+`Train`/`evaluation`/`inference` pipelines support GPU acceleration. To activate it, specify the following env variable:
+```
+export CUDA_VISIBLE_DEVICES={DEVICE_NUM} 
+```
 
 ---
 <a name="trainmodel"/>
@@ -150,11 +179,6 @@ optional arguments:
 This script creates `test.log` in `RUN_DIR` directory and writes the `uSDR` and `cSDR` metrics there 
 for test subset of MUSDB18 dataset.
 
----
-`Training`/`evaluation`/`inference` pipelines support GPU acceleration. To do so, specify the following env variable:
-```
-export CUDA_VISIBLE_DEVICES={DEVICE_NUM} 
-```
 ---
 <a name="structure"/>
 
