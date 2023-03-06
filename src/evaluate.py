@@ -47,19 +47,29 @@ def run_eval_loop(
 
     metrics = defaultdict(list)
 
-    for b in dataset:
-        y_mix, y_tgt, dur = b[0], b[1], b[2]
+    for item in dataset:
+        # load dataset item
+        y_mix, y_tgt, y_mix_dur = item
         input_length = y_mix.shape[-1]
 
-        y_mix = y_mix.to(device)
-        y_mix = featurizer(y_mix)
-        y_tgt_hat = torch.empty_like(y_mix)
+        # run through featurizer
+        y_mix = featurizer(y_mix.to(device))
 
+        # run through model
+        y_tgt_hat = torch.empty_like(y_mix)
         for s, e in get_minibatch(y_mix.shape[0]):
             y_tgt_hat[s:e] = model(y_mix[s:e])
-        y_tgt_hat = inverse_featurizer(y_tgt_hat, length=input_length)
-        y_tgt_hat = y_tgt_hat.cpu()
-        y_tgt_hat = overlap_add(y_tgt_hat, y_tgt, step=dataset.hop_size)
+
+        # run through inverse featurizer
+        y_tgt_hat = inverse_featurizer(y_tgt_hat, length=input_length).cpu()
+        # overlap-add moment
+        y_tgt_hat = overlap_add(y_tgt_hat, y_mix_dur, step=dataset.hop_size)
+
+        # delete padded chunks
+        y_tgt_hat = y_tgt_hat[:, dataset.pad_size:-dataset.pad_size]
+        y_tgt = y_tgt[:, dataset.pad_size:-dataset.pad_size]
+
+        # compute and save metrics
         cSDR, uSDR = compute_SDRs(y_tgt_hat, y_tgt)
 
         metrics['cSDR'].append(cSDR)

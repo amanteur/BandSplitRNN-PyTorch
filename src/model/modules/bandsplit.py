@@ -4,11 +4,13 @@ from typing import List, Tuple, Iterator
 
 from .utils import freq2bands
 
+
 class BandSplitModule(nn.Module):
     """
     BandSplit (1st) Module of BandSplitRNN.
     Separates input in k subbands and runs through LayerNorm+FC layers.
     """
+
     def __init__(
             self,
             sr: int,

@@ -80,18 +80,20 @@ class SourceSeparationDataset(Dataset):
         Each Tensor's output shape: [n_channels, frames_in_segment]
         """
         fp_template, indices = self.filelist[index]
-        mix_segment = self.load_file(
-            str(fp_template).format('mixture'), indices
-        )
-        target_segment = self.load_file(
-            str(fp_template).format(self.target), indices
-        )
+        mix_fp = str(fp_template).format('mixture')
+        tgt_fp = str(fp_template).format(self.target)
+
+        mix_segment = self.load_file(mix_fp, indices)
+        target_segment = self.load_file(tgt_fp, indices)
+
         return (
             mix_segment, target_segment
         )
 
     def __len__(self):
         return len(self.filelist)
+
+
 
 
 class TestSourceSeparationDataset(Dataset):
@@ -119,10 +121,6 @@ class TestSourceSeparationDataset(Dataset):
 
         self.filelist = self.get_filelist()
 
-        # initialized while testing
-        self.eval_step = None
-
-
     def get_filelist(self) -> List[Path]:
         filelist = []
         test_dir = self.file_dir / self.mode
@@ -131,15 +129,18 @@ class TestSourceSeparationDataset(Dataset):
             filelist.append(filepath_template)
         return filelist
 
-    def pad(self, y: torch.Tensor, sr: int):
+    def pad(self, y: torch.Tensor):
         """
         Pads audio in order to preserve all fragments while chunking.
         """
         C, T = y.shape
 
         # padding for preserving all chunks
-        pad_size2 = int((T + self.pad_size * 2) / self.hop_size) * self.hop_size + self.win_size - T - self.pad_size * 2
-        y = F.pad(y, (self.pad_size, self.pad_size + pad_size2), 'constant')
+        # pad_size2 = self.win_size - (T + self.pad_size * 2) % self.hop_size
+        # y = F.pad(y, (self.pad_size, self.pad_size + pad_size2), 'constant')
+
+        # w/o additional padding
+        y = F.pad(y, (self.pad_size, self.pad_size), 'constant')
         return y
 
     def load_file(
@@ -150,9 +151,9 @@ class TestSourceSeparationDataset(Dataset):
             file_path,
             channels_first=True
         )
-        orig_length = y.shape[-1]
         # add padding
-        y = self.pad(y, sr)
+        y = self.pad(y)
+        duration = y.shape[-1]
         # setting to mono if necessary
         if self.is_mono:
             y = torch.mean(y, dim=0, keepdim=True)
@@ -162,13 +163,13 @@ class TestSourceSeparationDataset(Dataset):
                 -1, self.win_size, self.hop_size
             )
             y = y.transpose(0, 1)
-        return y, orig_length
+        return y, duration
 
     def __getitem__(
             self, index: int
     ) -> Tuple[torch.Tensor, Union[torch.Tensor, float], int]:
         fp_template = self.filelist[index]
-        y, orig_length = self.load_file(
+        y, duration = self.load_file(
             str(fp_template).format('mixture'), is_tgt=False
         )
         if self.target:
@@ -178,8 +179,55 @@ class TestSourceSeparationDataset(Dataset):
         else:
             y_tgt = torch.Tensor(float('nan'))
         return (
-            y, y_tgt, orig_length
+            y, y_tgt, duration
         )
 
     def __len__(self):
         return len(self.filelist)
+
+
+class InferenceSourceSeparationDataset(TestSourceSeparationDataset):
+    def __init__(
+            self,
+            in_file_path: str,
+            out_file_path: str,
+            target: str,
+            is_mono: bool = False,
+            sr: int = 44100,
+            win_size: float = 3,
+            hop_size: float = 0.5
+    ):
+        self.in_file_path = Path(in_file_path)
+        self.out_file_path = Path(out_file_path)
+
+        self.target = target
+        self.is_mono = is_mono
+        self.sr = sr
+        self.win_size = int(win_size * sr)
+        self.hop_size = int(hop_size * sr)
+        self.pad_size = self.win_size - self.hop_size
+
+        self.filelist = self.get_filelist()
+
+    def get_filelist(self) -> List[Tuple[Path, Path]]:
+        extensions = ['.wav', '.mp3']
+        filelist = []
+        if self.in_file_path.is_file() and self.in_file_path.suffix in extensions:
+            self.out_file_path = self.out_file_path / f"{self.in_file_path.stem}_{self.target}.wav"
+            filelist.append((self.in_file_path, self.out_file_path))
+        elif self.in_file_path.is_dir():
+            for in_fp in self.in_file_path.glob("*"):
+                if in_fp.suffix in extensions:
+                    out_fp = self.out_file_path / f"{in_fp.stem}_{self.target}.wav"
+                    filelist.append((in_fp, out_fp))
+        else:
+            raise ValueError(f"Can not open the path {self.in_file_path}")
+        return filelist
+
+    def __getitem__(
+            self, index: int
+    ) -> Tuple[torch.Tensor, int, Path]:
+        in_fp, out_fp = self.filelist[index]
+        y, duration = self.load_file(str(in_fp), is_tgt=False)
+        return y, duration, out_fp
+

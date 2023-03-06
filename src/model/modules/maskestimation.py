@@ -98,9 +98,8 @@ class MaskEstimationModule(nn.Module):
             outs.append(out)
 
         # concat all subbands
-        outs = torch.cat(outs, dim=-1)
-        outs = outs.transpose(-1, -2)
-        return outs.unsqueeze(1)
+        outs = torch.cat(outs, dim=-1).mT.unsqueeze(1)
+        return outs
 
 
 if __name__ == '__main__':

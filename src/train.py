@@ -80,18 +80,20 @@ def initialize_model(
     model = BandSplitRNN(
         **cfg.model
     )
-    if cfg.ckpt_path is not None:
-        state_dict = torch.load(cfg.ckpt_path)
-        _ = model.load_state_dict(state_dict, strict=True)
-
-    opt = instantiate(
-        cfg.opt,
-        params=model.parameters()
-    )
-    sch = instantiate(
-        cfg.sch,
-        optimizer=opt
-    )
+    if 'opt' in cfg:
+        opt = instantiate(
+            cfg.opt,
+            params=model.parameters()
+        )
+    else:
+        opt = None
+    if 'sch' in cfg:
+        sch = instantiate(
+            cfg.sch,
+            optimizer=opt
+        )
+    else:
+        sch = None
     return model, opt, sch
 
 
@@ -144,7 +146,8 @@ def my_app(cfg: DictConfig) -> None:
         trainer.fit(
             plmodel,
             train_dataloaders=train_loader,
-            val_dataloaders=val_loader
+            val_dataloaders=val_loader,
+            ckpt_path=cfg.ckpt_path
         )
     except Exception as e:
         log.error(str(e))

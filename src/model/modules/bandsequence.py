@@ -6,6 +6,7 @@ class RNNModule(nn.Module):
     """
     RNN submodule of BandSequence module
     """
+
     def __init__(
             self,
             group_dim_size: int,
@@ -37,19 +38,12 @@ class RNNModule(nn.Module):
 
         B, K, T, N = x.shape  # across T, across K - keep in mind T->K, K->T
 
-        # [B, K, T, N] across T, [BT, K, N] across K
-        out = self.groupnorm(x)
-        # [BK, T, N] across T, [BT, K, N] across K
-        out = out.view(B * K, T, N)
-        # [BK, T, H] across T, [BT, K, H] across K
-        out, _ = self.rnn(out)
-        # [BK, T, N] across T, [BT, K, N] across K
-        out = self.fc(out)
-        # [B, K, T, N]
-        out = out.view(B, K, T, N) + x
-        # [B, T, K, N]
-        out = out.permute(0, 2, 1, 3).contiguous()
-
+        out = self.groupnorm(x)                     # [B, K, T, N] across T,    [B, T, K, N] across K
+        out = out.view(B * K, T, N)                 # [BK, T, N] across T,      [BT, K, N] across K
+        out, _ = self.rnn(out)                      # [BK, T, H] across T,      [BT, K, H] across K
+        out = self.fc(out)                          # [BK, T, N] across T,      [BT, K, N] across K
+        out = out.view(B, K, T, N) + x              # [B, K, T, N] across T,    [B, T, K, N] across K
+        out = out.permute(0, 2, 1, 3).contiguous()  # [B, T, K, N] across T,    [B, K, T, N] across K
         return out
 
 
@@ -58,6 +52,7 @@ class BandSequenceModelModule(nn.Module):
     BandSequence (2nd) Module of BandSplitRNN.
     Runs input through n BiLSTMs in two dimensions - time and subbands.
     """
+
     def __init__(
             self,
             k_subbands: int,
@@ -91,7 +86,6 @@ class BandSequenceModelModule(nn.Module):
 
         for i in range(len(self.bsrnn)):
             x = self.bsrnn[i](x)
-
         return x
 
 

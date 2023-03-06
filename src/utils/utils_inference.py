@@ -6,12 +6,12 @@ from typing import Tuple
 
 
 def load_pl_state_dict(
-        path: Path
+        path: Path, device: torch.device,
 ) -> OrderedDict[str, torch.Tensor]:
     """
     Loads and preprocesses pytorch-lightning state dict
     """
-    sd = torch.load(path)
+    sd = torch.load(path, map_location=device)
     new_sd = OrderedDict()
     for k, v in sd['state_dict'].items():
         if 'model' in k:
@@ -31,14 +31,13 @@ def get_minibatch(
 
 
 def overlap_add(
-        y: torch.Tensor, y_tgt: torch.Tensor, step: int
+        y: torch.Tensor, duration: int, step: int
 ) -> torch.Tensor:
     """
     overlap-add algorithm
     """
-    y_overlapped = torch.zeros_like(y_tgt)
-    start = 0
-    end = y.shape[-1]
+    y_overlapped = torch.zeros((y.shape[1], duration))
+    start, end = 0, y.shape[-1]
     for y_chunk in y:
         y_overlapped[:, start:end] += y_chunk
         start += step
