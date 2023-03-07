@@ -41,9 +41,6 @@ class PLModel(pl.LightningModule):
         # logging
         self.save_hyperparameters(hparams)
 
-        # other
-        self.tracked_gradient_global_only()
-
     def training_step(
             self, batch, batch_idx
     ) -> torch.Tensor:
@@ -132,16 +129,3 @@ class PLModel(pl.LightningModule):
         tqdm_dict = super().get_progress_bar_dict()
         tqdm_dict.pop("v_num", None)
         return tqdm_dict
-
-    @staticmethod
-    def tracked_gradient_global_only():
-        def remove_per_weight_norms(func):
-            def f(*args):
-                norms = func(*args)
-
-                norms = dict(filter(lambda elem: '_total' in elem[0], norms.items()))
-
-                return norms
-
-            return f
-        pl.utilities.grad_norm = remove_per_weight_norms(pl.utilities.grad_norm)

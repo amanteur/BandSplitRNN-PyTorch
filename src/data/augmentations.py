@@ -41,7 +41,6 @@ class GainScale(nn.Module):
     """
     Randomly scales the energy of a chunk in some dB range.
     """
-
     def __init__(
             self,
             p: float = 1.,
@@ -75,7 +74,6 @@ class Mix(nn.Module):
     """
     Mixes random target sources into mixtures.
     """
-
     def __init__(
             self,
             p: float = 0.5,

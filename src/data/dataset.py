@@ -4,14 +4,14 @@ import torchaudio
 import torch.nn.functional as F
 import random
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import List, Set, Tuple, Union
 
 
 class SourceSeparationDataset(Dataset):
     """
     Dataset class for working with train/validation data from MUSDB18 dataset.
     """
-    TARGETS: List[str] = ['vocals', 'bass', 'drums', 'other']
+    TARGETS: Set[str] = {'vocals', 'bass', 'drums', 'other'}
 
     def __init__(
             self,
@@ -23,12 +23,14 @@ class SourceSeparationDataset(Dataset):
             mode: str = 'train',  # valid
             sr: int = 44100,
             silent_prob: float = 0.1,
+            mix_prob: float = 0.1,
+            mix_tgt_too: bool = False,
+            mix_normalize: bool = False
     ):
         self.file_dir = Path(file_dir)
         self.mode = mode
         self.target = target
         self.sr = sr
-        self.silent_prob = silent_prob
 
         if txt_path is None and txt_dir is not None:
             self.txt_path = Path(txt_dir) / f"{target}_{mode}.txt"
@@ -40,7 +42,13 @@ class SourceSeparationDataset(Dataset):
         self.is_mono = is_mono
         self.filelist = self.get_filelist()
 
-    def get_filelist(self) -> List[Tuple[Path, Tuple[int, int]]]:
+        # augmentations
+        self.silent_prob = silent_prob
+        self.mix_prob = mix_prob
+        self.mix_tgt_too = mix_tgt_too
+        self.mix_normalize = mix_normalize
+
+    def get_filelist(self) -> List[Tuple[str, Tuple[int, int]]]:
         filename2label = {}
         filelist = []
         i = 0
@@ -51,7 +59,7 @@ class SourceSeparationDataset(Dataset):
                 i += 1
             filepath_template = self.file_dir / "train" / f"{file_name}" / "{}.wav"
             filelist.append(
-                (filepath_template, (int(start_idx), int(end_idx)))
+                (str(filepath_template), (int(start_idx), int(end_idx)))
             )
         return filelist
 
@@ -75,20 +83,51 @@ class SourceSeparationDataset(Dataset):
             y = torch.mean(y, dim=0, keepdim=True)
         return y
 
+    @staticmethod
     def imitate_silent_segments(
-            self,
-            fp_template: Path,
-            indices: Tuple[int, int],
+            mix_segment: torch.Tensor,
+            tgt_segment: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        mix_segment = []
-        for target in self.TARGETS:
-            if self.target != target:
-                fp = str(fp_template).format(target)
-                mix_segment.append(self.load_file(fp, indices))
-        mix_segment = torch.stack(mix_segment, dim=0).sum(dim=0)
-        target_segment = torch.zeros_like(mix_segment)
         return (
-            mix_segment, target_segment
+            mix_segment - tgt_segment,
+            torch.zeros_like(tgt_segment)
+        )
+
+    @staticmethod
+    def norm_rms(y: torch.Tensor):
+        rms = torch.sqrt(
+            torch.mean(torch.square(y), dim=-1, keepdim=True)
+        )
+        return y / (rms + 1e-8)
+
+    def mix_segments(
+            self,
+            tgt_segment: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        # decide how many sources to mix
+        if not self.mix_tgt_too:
+            self.TARGETS.discard(self.target)
+        n_sources = random.randrange(1, len(self.TARGETS) + 1)
+        # decide which sources to mix
+        targets_to_mix = random.sample(
+            self.TARGETS, n_sources
+        )
+        # create new mix segment
+        mix_segment = tgt_segment.clone()
+        for target in targets_to_mix:
+            # get random file to mix source from
+            fp_template_to_mix, indices_to_mix = random.choice(self.filelist)
+            fp_to_mix = fp_template_to_mix.format(target)
+            segment_to_mix = self.load_file(fp_to_mix, indices_to_mix)
+            mix_segment += segment_to_mix
+            # normalize mix and target after mixing
+            if target == self.target:
+                tgt_segment += segment_to_mix
+        if self.mix_normalize:
+            mix_segment = self.norm_rms(mix_segment)
+            tgt_segment = self.norm_rms(tgt_segment)
+        return (
+            mix_segment, tgt_segment
         )
 
     def __getitem__(
@@ -98,19 +137,28 @@ class SourceSeparationDataset(Dataset):
         """
         Each Tensor's output shape: [n_channels, frames_in_segment]
         """
+        # load file templates
         fp_template, indices = self.filelist[index]
 
+        # load files
         mix_segment = self.load_file(
-            str(fp_template).format('mixture'), indices
+            fp_template.format('mixture'), indices
         )
         target_segment = self.load_file(
-            str(fp_template).format(self.target), indices
+            fp_template.format(self.target), indices
         )
-
-        if self.mode == 'train' and random.random() < self.silent_prob:
-            mix_segment, target_segment = self.imitate_silent_segments(
-                fp_template, indices
-            )
+        # augmentations related to mixing/dropping sources
+        if self.mode == 'train':
+            # dropping target
+            if random.random() < self.silent_prob:
+                mix_segment, target_segment = self.imitate_silent_segments(
+                    mix_segment, target_segment
+                )
+            # mixing with other sources
+            if random.random() < self.mix_prob:
+                mix_segment, target_segment = self.mix_segments(
+                    target_segment
+                )
 
         return (
             mix_segment, target_segment

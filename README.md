@@ -20,6 +20,8 @@ Unofficial PyTorch implementation of the paper [Music Source Separation with Ban
 ## TODOs
 
 - Train other targets
+- Mix augmentation normalize (by max of maxes of samples)
+- Add Self-Supervised pipeline
 
 ---
 <a name="dependencies"/>
