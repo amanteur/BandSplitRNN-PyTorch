@@ -2,17 +2,18 @@ import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
+from typing import Tuple
+import shutil
 
-import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
+from torch.optim import Optimizer, lr_scheduler
 
 from data import SourceSeparationDataset, collate_fn
 from model import BandSplitRNN, PLModel
 
-from typing import Tuple
-from torch.optim import Optimizer, lr_scheduler
+
 
 import logging
 
@@ -114,6 +115,8 @@ def initialize_utils(
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def my_app(cfg: DictConfig) -> None:
+    pl.seed_everything(42, workers=True)
+
     log.info(OmegaConf.to_yaml(cfg))
 
     log.info("Initializing loaders, featurizers.")
@@ -153,6 +156,10 @@ def my_app(cfg: DictConfig) -> None:
         log.error(str(e))
         raise e
     log.info("Training finished!")
+
+    if cfg.trainer.fast_dev_run:
+        hydra_cfg = hydra.core.hydra_config.HydraConfig.get()
+        shutil.rmtree(hydra_cfg['runtime']['output_dir'])
 
 
 if __name__ == "__main__":

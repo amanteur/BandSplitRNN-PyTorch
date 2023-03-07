@@ -5,3 +5,4 @@ target: vocals
 mode: train
 is_mono: False
 sr: 44100
+silent_prob: 0.1

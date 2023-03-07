@@ -20,7 +20,6 @@ Unofficial PyTorch implementation of the paper [Music Source Separation with Ban
 ## TODOs
 
 - Train other targets
-- Augmentations with dropping fragment
 
 ---
 <a name="dependencies"/>

@@ -12,7 +12,8 @@ def compute_uSDR(
     """
     Computes SDR metric as in https://arxiv.org/pdf/2108.13559.pdf
     """
-    return np.sum(y_tgt ** 2) / ((np.sum((y_tgt - y_hat) ** 2)) + eps)
+    uSDR = np.sum(y_tgt ** 2) / ((np.sum((y_tgt - y_hat) ** 2)) + eps)
+    return 10 * np.log10(uSDR)
 
 
 def compute_SDRs(

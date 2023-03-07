@@ -54,8 +54,8 @@ class PLModel(pl.LightningModule):
 
         # logging
         for k in loss_dict:
-            self.log(f"train/{k}", loss_dict[k])
-        self.log("train/loss", loss)
+            self.log(f"train/{k}", loss_dict[k].detach(), on_epoch=True, on_step=False)
+        self.log("train/loss", loss.detach(), on_epoch=True, on_step=False)
 
         return loss
 
@@ -115,8 +115,15 @@ class PLModel(pl.LightningModule):
             "lossSpecI": lossI,
             "lossTime": lossT
         }
-        loss = sum(loss_dict.values())
+        loss = lossR + lossI + lossT
         return loss, loss_dict
+
+    def on_before_optimizer_step(
+        self, optimizer, optimizer_idx
+    ):
+        norms = pl.utilities.grad_norm(self, norm_type=2)
+        norms = dict(filter(lambda elem: '_total' in elem[0], norms.items()))
+        self.log_dict(norms)
 
     def configure_optimizers(self):
         return [self.opt], [self.sch]

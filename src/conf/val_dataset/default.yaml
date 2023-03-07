@@ -3,5 +3,5 @@ txt_dir: "files/"
 txt_path: null
 target: ${..train_dataset.target}
 mode: valid
-is_mono: False
-sr: 44100
+is_mono: ${..train_dataset.is_mono}
+sr: ${..train_dataset.sr}

@@ -35,9 +35,9 @@ logging.basicConfig(
 )
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-_ = torch.set_grad_enabled(False)
 
 
+@torch.no_grad()
 def run_eval_loop(
         model: nn.Module,
         dataset: Dataset,
@@ -91,7 +91,7 @@ def run_eval(
 
     for ckpt_path in ckpt_dir_path.glob("*.ckpt"):
         logger.info(f"Evaluating checkpoint - {ckpt_path.name}")
-        state_dict = load_pl_state_dict(ckpt_path)
+        state_dict = load_pl_state_dict(ckpt_path, device=device)
         _ = model.load_state_dict(state_dict, strict=True)
 
         metrics = run_eval_loop(

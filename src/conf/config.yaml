@@ -52,7 +52,7 @@ trainer:
   precision: 32
   enable_progress_bar: True
   benchmark: True
-  track_grad_norm: 2
+  deterministic: True
 
 
 experiment_dirname: bandsplitrnn

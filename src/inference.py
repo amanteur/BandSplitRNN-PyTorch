@@ -81,6 +81,7 @@ def initialize_all(
     return model, featurizer, inverse_featurizer, cfg
 
 
+@torch.no_grad()
 def run_inference(
         model: nn.Module,
         featurizer: nn.Module,

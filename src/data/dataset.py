@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset
 import torchaudio
 import torch.nn.functional as F
-
+import random
 from pathlib import Path
 from typing import List, Tuple, Union
 
@@ -11,6 +11,7 @@ class SourceSeparationDataset(Dataset):
     """
     Dataset class for working with train/validation data from MUSDB18 dataset.
     """
+    TARGETS: List[str] = ['vocals', 'bass', 'drums', 'other']
 
     def __init__(
             self,
@@ -20,12 +21,14 @@ class SourceSeparationDataset(Dataset):
             target: str = 'vocals',
             is_mono: bool = False,
             mode: str = 'train',  # valid
-            sr: int = 44100
+            sr: int = 44100,
+            silent_prob: float = 0.1,
     ):
         self.file_dir = Path(file_dir)
         self.mode = mode
         self.target = target
         self.sr = sr
+        self.silent_prob = silent_prob
 
         if txt_path is None and txt_dir is not None:
             self.txt_path = Path(txt_dir) / f"{target}_{mode}.txt"
@@ -72,6 +75,22 @@ class SourceSeparationDataset(Dataset):
             y = torch.mean(y, dim=0, keepdim=True)
         return y
 
+    def imitate_silent_segments(
+            self,
+            fp_template: Path,
+            indices: Tuple[int, int],
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        mix_segment = []
+        for target in self.TARGETS:
+            if self.target != target:
+                fp = str(fp_template).format(target)
+                mix_segment.append(self.load_file(fp, indices))
+        mix_segment = torch.stack(mix_segment, dim=0).sum(dim=0)
+        target_segment = torch.zeros_like(mix_segment)
+        return (
+            mix_segment, target_segment
+        )
+
     def __getitem__(
             self,
             index: int
@@ -80,11 +99,18 @@ class SourceSeparationDataset(Dataset):
         Each Tensor's output shape: [n_channels, frames_in_segment]
         """
         fp_template, indices = self.filelist[index]
-        mix_fp = str(fp_template).format('mixture')
-        tgt_fp = str(fp_template).format(self.target)
 
-        mix_segment = self.load_file(mix_fp, indices)
-        target_segment = self.load_file(tgt_fp, indices)
+        mix_segment = self.load_file(
+            str(fp_template).format('mixture'), indices
+        )
+        target_segment = self.load_file(
+            str(fp_template).format(self.target), indices
+        )
+
+        if self.mode == 'train' and random.random() < self.silent_prob:
+            mix_segment, target_segment = self.imitate_silent_segments(
+                fp_template, indices
+            )
 
         return (
             mix_segment, target_segment
@@ -92,8 +118,6 @@ class SourceSeparationDataset(Dataset):
 
     def __len__(self):
         return len(self.filelist)
-
-
 
 
 class TestSourceSeparationDataset(Dataset):
@@ -133,9 +157,9 @@ class TestSourceSeparationDataset(Dataset):
         """
         Pads audio in order to preserve all fragments while chunking.
         """
-        C, T = y.shape
 
         # padding for preserving all chunks
+        # C, T = y.shape
         # pad_size2 = self.win_size - (T + self.pad_size * 2) % self.hop_size
         # y = F.pad(y, (self.pad_size, self.pad_size + pad_size2), 'constant')
 
@@ -151,6 +175,10 @@ class TestSourceSeparationDataset(Dataset):
             file_path,
             channels_first=True
         )
+        if sr != self.sr:
+            y = torchaudio.transforms.Resample(
+                orig_freq=sr, new_freq=self.sr
+            )(y)
         # add padding
         y = self.pad(y)
         duration = y.shape[-1]
@@ -230,4 +258,3 @@ class InferenceSourceSeparationDataset(TestSourceSeparationDataset):
         in_fp, out_fp = self.filelist[index]
         y, duration = self.load_file(str(in_fp), is_tgt=False)
         return y, duration, out_fp
-
