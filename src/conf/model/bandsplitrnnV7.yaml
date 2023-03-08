@@ -11,6 +11,6 @@ fc_dim: 128
 rnn_dim: 256
 rnn_type: "LSTM"
 bidirectional: True
-num_layers: 1 # 12
+num_layers: 12
 mlp_dim: 512
 return_mask: False

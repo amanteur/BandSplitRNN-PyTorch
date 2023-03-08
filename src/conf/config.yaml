@@ -41,7 +41,7 @@ logger:
   default_hp_metric: False
 
 trainer:
-  fast_dev_run: True
+  fast_dev_run: False
   max_epochs: 100
   check_val_every_n_epoch: 1
   num_sanity_val_steps: 5

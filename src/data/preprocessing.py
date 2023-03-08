@@ -112,7 +112,7 @@ if __name__ == "__main__":
     import torchaudio
 
     sr = 44100
-    example_path = 'example/example.wav'
+    example_path = 'example/example.mp3'
 
     sad = SAD(sr=sr)
     y, sr = torchaudio.load(example_path)

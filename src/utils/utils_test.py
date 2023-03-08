@@ -7,13 +7,19 @@ from typing import Tuple
 def compute_uSDR(
         y_hat: np.ndarray,
         y_tgt: np.ndarray,
-        eps: float = 1e-7,
+        delta: float = 1e-7,
 ) -> float:
     """
-    Computes SDR metric as in https://arxiv.org/pdf/2108.13559.pdf
+    Computes SDR metric as in https://arxiv.org/pdf/2108.13559.pdf.
+    Taken and slightly rewritten from
+    https://github.com/AIcrowd/music-demixing-challenge-starter-kit/blob/master/evaluator/music_demixing.py
     """
-    uSDR = np.sum(y_tgt ** 2) / ((np.sum((y_tgt - y_hat) ** 2)) + eps)
-    return 10 * np.log10(uSDR)
+    # compute SDR for one song
+    num = np.sum(np.square(y_tgt), axis=(1, 2))
+    den = np.sum(np.square(y_tgt - y_hat), axis=(1, 2))
+    num += delta
+    den += delta
+    return 10 * np.log10(num / den)
 
 
 def compute_SDRs(
@@ -29,7 +35,7 @@ def compute_SDRs(
         y_hat,
         y_tgt
     )
-    cSDR = np.median(cSDR[~np.isnan(cSDR)])
+    cSDR = np.nanmedian(cSDR)
 
     # as in music demixing challenge
     uSDR = compute_uSDR(
