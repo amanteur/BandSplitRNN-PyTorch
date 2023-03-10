@@ -19,8 +19,8 @@ Unofficial PyTorch implementation of the paper [Music Source Separation with Ban
 
 ## TODOs
 
-- Train other targets
-- Mix augmentation normalize (by max of maxes of samples)
+- Train `other`/`bass`/`drums` models
+- Add Wiener Filter
 - Add Self-Supervised pipeline
 
 ---
@@ -38,6 +38,7 @@ If using ``conda``, you can run:
 ```
 conda install -c conda-forge ffmpeg
 ```
+All scripts should be run from `src` directory.
 
 ---
 <a name="quickstart"/>
@@ -57,9 +58,10 @@ options:
   -t TARGET, --target TARGET
                         Name of the target source to extract.
   -c CKPT_PATH, --ckpt-path CKPT_PATH
-                        Path to model's checkpoint. If not specified, the .ckpt from ${SAVED_MODELS_DIR}/{target} is used.
+                        Path to model's checkpoint. If not specified, the .ckpt from ./saved_models/{TARGET} is used.
 
 ```
+You can customize inference via changing `./saved_models/{TARGET}/hparams.yaml` file.
 
 Available checkpoints:
 
@@ -101,7 +103,7 @@ To speed up the training process, instead of loading whole files,
 we can precompute the indices of fragments we need to extract. 
 To select these indices, the proposed Source Activity Detection algorithm was used.
 
-The following script reads the `musdb18` dataset and extracts salient fragments according to the `target` source:
+To read the `musdb18` dataset and extract salient fragments according to the `target` source, use the following script:
 ```
 usage: prepare_dataset.py [-h] -i INPUT_DIR -o OUTPUT_DIR [--subset SUBSET] [--split SPLIT] [--sad_cfg SAD_CFG] [-t TARGET [TARGET ...]]
 

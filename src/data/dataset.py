@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import random
 from pathlib import Path
 from typing import List, Set, Tuple, Union
+import numpy as np
 
 
 class SourceSeparationDataset(Dataset):
@@ -24,8 +25,9 @@ class SourceSeparationDataset(Dataset):
             sr: int = 44100,
             silent_prob: float = 0.1,
             mix_prob: float = 0.1,
+            mix_version: str = 'v1',
             mix_tgt_too: bool = False,
-            mix_normalize: bool = False
+            mix_dbs: Tuple[int, int] = (0, 5)
     ):
         self.file_dir = Path(file_dir)
         self.mode = mode
@@ -45,8 +47,9 @@ class SourceSeparationDataset(Dataset):
         # augmentations
         self.silent_prob = silent_prob
         self.mix_prob = mix_prob
+        self.mix_version = mix_version
         self.mix_tgt_too = mix_tgt_too
-        self.mix_normalize = mix_normalize
+        self.mix_dbs = mix_dbs
 
     def get_filelist(self) -> List[Tuple[str, Tuple[int, int]]]:
         filename2label = {}
@@ -83,6 +86,24 @@ class SourceSeparationDataset(Dataset):
             y = torch.mean(y, dim=0, keepdim=True)
         return y
 
+    def load_files(
+            self, fp_template: str, indices: Tuple[int, int]
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        mix_segment = self.load_file(
+            fp_template.format('mixture'), indices
+        )
+        tgt_segment = self.load_file(
+            fp_template.format(self.target), indices
+        )
+        max_norm = max(
+            mix_segment.abs().max(), tgt_segment.abs().max()
+        )
+        mix_segment /= max_norm
+        tgt_segment /= max_norm
+        return (
+            mix_segment, tgt_segment
+        )
+
     @staticmethod
     def imitate_silent_segments(
             mix_segment: torch.Tensor,
@@ -94,38 +115,75 @@ class SourceSeparationDataset(Dataset):
         )
 
     @staticmethod
-    def norm_rms(y: torch.Tensor):
-        rms = torch.sqrt(
-            torch.mean(torch.square(y), dim=-1, keepdim=True)
+    def db2amp(db):
+        return 10 ** (db / 20)
+
+    @staticmethod
+    def calc_rms(y: torch.Tensor, keepdim=True) -> torch.Tensor:
+        """
+        Calculate Power of audio signal.
+        """
+        return torch.sqrt(
+            torch.mean(torch.square(y), dim=-1, keepdim=keepdim)
         )
+
+    def rms_normalize(self, y: torch.Tensor) -> torch.Tensor:
+        """
+        Power-normalize an audio signal.
+        """
+        rms = self.calc_rms(y, keepdim=True)
         return y / (rms + 1e-8)
 
-    def mix_segments(
+    def mix_segmentsV1(
+            self,
+            mix_segment: torch.Tensor,
+            tgt_segment: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Mixing two mixtures and two targets from different files
+        """
+        fp_template_to_add, indices_to_add = random.choice(self.filelist)
+        mix_segment_to_add, tgt_segment_to_add = self.load_files(fp_template_to_add, indices_to_add)
+
+        db_scales = torch.empty(1).uniform_(*self.mix_dbs)
+
+        mix_segment_to_add = self.rms_normalize(mix_segment_to_add)
+        tgt_segment_to_add = self.rms_normalize(tgt_segment_to_add)
+
+        mix_segment += mix_segment_to_add * self.calc_rms(mix_segment) / self.db2amp(db_scales)
+        tgt_segment += tgt_segment_to_add * self.calc_rms(tgt_segment_to_add) / self.db2amp(db_scales)
+        return (
+            mix_segment, tgt_segment
+        )
+
+    def mix_segmentsV2(
             self,
             tgt_segment: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Creating new mixture and new target from target file and random multiple sources
+        """
         # decide how many sources to mix
         if not self.mix_tgt_too:
             self.TARGETS.discard(self.target)
         n_sources = random.randrange(1, len(self.TARGETS) + 1)
         # decide which sources to mix
-        targets_to_mix = random.sample(
+        targets_to_add = random.sample(
             self.TARGETS, n_sources
         )
         # create new mix segment
         mix_segment = tgt_segment.clone()
-        for target in targets_to_mix:
+        for target in targets_to_add:
             # get random file to mix source from
-            fp_template_to_mix, indices_to_mix = random.choice(self.filelist)
-            fp_to_mix = fp_template_to_mix.format(target)
-            segment_to_mix = self.load_file(fp_to_mix, indices_to_mix)
-            mix_segment += segment_to_mix
-            # normalize mix and target after mixing
+            fp_template_to_add, indices_to_add = random.choice(self.filelist)
+            segment_to_add = self.load_file(
+                fp_template_to_add.format(target), indices_to_add
+            )
+            # normalize it
+            segment_to_add /= segment_to_add.abs().max()
+            mix_segment += segment_to_add
             if target == self.target:
-                tgt_segment += segment_to_mix
-        if self.mix_normalize:
-            mix_segment = self.norm_rms(mix_segment)
-            tgt_segment = self.norm_rms(tgt_segment)
+                tgt_segment += segment_to_add
         return (
             mix_segment, tgt_segment
         )
@@ -141,12 +199,8 @@ class SourceSeparationDataset(Dataset):
         fp_template, indices = self.filelist[index]
 
         # load files
-        mix_segment = self.load_file(
-            fp_template.format('mixture'), indices
-        )
-        target_segment = self.load_file(
-            fp_template.format(self.target), indices
-        )
+        mix_segment, target_segment = self.load_files(fp_template, indices)
+
         # augmentations related to mixing/dropping sources
         if self.mode == 'train':
             # dropping target
@@ -156,9 +210,14 @@ class SourceSeparationDataset(Dataset):
                 )
             # mixing with other sources
             if random.random() < self.mix_prob:
-                mix_segment, target_segment = self.mix_segments(
-                    target_segment
-                )
+                if self.mix_version == 'v1':
+                    mix_segment, target_segment = self.mix_segmentsV1(
+                        mix_segment, target_segment
+                    )
+                elif self.mix_version == 'v2':
+                    mix_segment, target_segment = self.mix_segmentsV2(
+                        target_segment
+                    )
 
         return (
             mix_segment, target_segment

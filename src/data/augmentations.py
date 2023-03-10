@@ -3,7 +3,6 @@ import torch.nn as nn
 import random
 
 
-# TODO: Add SwapChannel augmentations
 class RandomCrop(nn.Module):
     """
     Randomly selects chunk from fragment.
@@ -116,7 +115,7 @@ class Mix(nn.Module):
                 0, B, (B,),
             )
             db_scales = torch.empty(
-                B, S, 1, 1, device=device
+                B, 1, 1, 1, device=device
             ).uniform_(self.min_db, self.max_db)
             y_targets_only = y[indices_background, 1].unsqueeze(1).repeat_interleave(2, dim=1)
             y_background = self.rms_normalize(y_targets_only)

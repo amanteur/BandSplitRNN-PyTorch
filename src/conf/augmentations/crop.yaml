@@ -1,0 +1,5 @@
+randomcrop:
+  _target_: data.augmentations.RandomCrop
+  p: 1.0
+  chunk_size_sec: 3
+  sr: 44100
