@@ -9,11 +9,14 @@ class BandSplitRNN(nn.Module):
     """
     BandSplitRNN as described in paper.
     """
+
     def __init__(
             self,
             sr: int,
             n_fft: int,
             bandsplits: List[Tuple[int, int]],
+            complex_as_channel: bool,
+            is_mono: bool,
             t_timesteps: int,
             fc_dim: int,
             rnn_dim: int,
@@ -21,8 +24,8 @@ class BandSplitRNN(nn.Module):
             bidirectional: bool,
             num_layers: int,
             mlp_dim: int,
-            return_mask: bool=False
-        ):
+            return_mask: bool = False
+    ):
         super(BandSplitRNN, self).__init__()
 
         self.bandsplit = BandSplitModule(
@@ -30,7 +33,9 @@ class BandSplitRNN(nn.Module):
             n_fft=n_fft,
             bandsplits=bandsplits,
             t_timesteps=t_timesteps,
-            fc_dim=fc_dim
+            fc_dim=fc_dim,
+            complex_as_channel=complex_as_channel,
+            is_mono=is_mono,
         )
         self.bandsequence = BandSequenceModelModule(
             k_subbands=len(self.bandsplit.bandwidth_indices),
@@ -39,7 +44,7 @@ class BandSplitRNN(nn.Module):
             hidden_dim_size=rnn_dim,
             rnn_type=rnn_type,
             bidirectional=bidirectional,
-            num_layers=num_layers
+            num_layers=num_layers,
         )
         self.maskest = MaskEstimationModule(
             sr=sr,
@@ -48,10 +53,21 @@ class BandSplitRNN(nn.Module):
             t_timesteps=t_timesteps,
             fc_dim=fc_dim,
             mlp_dim=mlp_dim,
+            complex_as_channel=complex_as_channel,
+            is_mono=is_mono,
         )
+        self.cac = complex_as_channel
         self.return_mask = return_mask
 
-    def compute_mask(self, x: torch.Tensor):
+    def wiener(self, x_hat: torch.Tensor, x_complex: torch.Tensor) -> torch.Tensor:
+        """
+        Wiener filtering of the input signal
+        """
+        # TODO: add Wiener Filtering
+        [x_hat, x_complex.imag]
+        return x_hat
+
+    def compute_mask(self, x: torch.Tensor) -> torch.Tensor:
         """
         Computes complex-valued T-F mask.
         """
@@ -67,18 +83,28 @@ class BandSplitRNN(nn.Module):
         Input shape: batch_size, n_channels, freq, time]
         Output shape: batch_size, n_channels, freq, time]
         """
-        B, C, F, T = x.shape
+        # use only magnitude if not using complex input
+        if not self.cac:
+            x_complex = x
+            x = x.abs()
+        # normalize
+        # TODO: Try to normalize in bandsplit and denormalize in maskest
+        mean = x.mean(dim=(1, 2, 3), keepdim=True)
+        std = x.std(dim=(1, 2, 3), keepdim=True)
+        x = (x - mean) / (1e-5 + std)
 
-        if C > 1:
-            x = x.reshape(B*C, 1, F, T)
         # compute T-F mask
         mask = self.compute_mask(x)
+
         # multiply with original tensor
         x = mask * x
 
-        if C > 1:
-            x = x.reshape(B, C, F, T)
-            mask = mask.reshape(B, C, F, T)
+        # denormalize
+        x = x * std + mean
+
+        if not self.cac:
+            x = self.wiener(x, x_complex)
+
 
         if self.return_mask:
             return x, mask
@@ -98,12 +124,14 @@ if __name__ == '__main__':
             (16000, 1000),
             (20000, 2000),
         ],
+        "complex_as_channel": True,
+        "is_mono": n_channels == 1,
         "t_timesteps": 259,
         "fc_dim": 128,
         "rnn_dim": 256,
         "rnn_type": "LSTM",
         "bidirectional": True,
-        "num_layers": 1, # 12,
+        "num_layers": 1,
         "mlp_dim": 512,
         "return_mask": False,
     }
@@ -115,5 +143,6 @@ if __name__ == '__main__':
 
     print(model)
     print(f"Total number of parameters: {sum([p.numel() for p in model.parameters()])}")
-    print(f"In: {in_features.shape}\nOut: {out_features.shape}")
+    print(f"In shape: {in_features.shape}\nOut shape: {out_features.shape}")
+    print(f"In dtype: {in_features.dtype}\nOut dtype: {out_features.dtype}")
 

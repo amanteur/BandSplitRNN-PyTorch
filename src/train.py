@@ -13,8 +13,6 @@ from torch.optim import Optimizer, lr_scheduler
 from data import SourceSeparationDataset, collate_fn
 from model import BandSplitRNN, PLModel
 
-
-
 import logging
 
 log = logging.getLogger(__name__)

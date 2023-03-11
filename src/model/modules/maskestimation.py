@@ -70,16 +70,29 @@ class MaskEstimationModule(nn.Module):
             bandsplits: List[Tuple[int, int]],
             t_timesteps: int = 517,
             fc_dim: int = 128,
-            mlp_dim: int = 512
+            mlp_dim: int = 512,
+            complex_as_channel: bool = True,
+            is_mono: bool = False,
     ):
         super(MaskEstimationModule, self).__init__()
+
+        frequency_mul = 1
+        if complex_as_channel:
+            frequency_mul *= 2
+        if not is_mono:
+            frequency_mul *= 2
+
+        self.cac = complex_as_channel
+        self.is_mono = is_mono
+        self.frequency_mul = frequency_mul
+
         self.bandwidths = [(e - s) for s, e in freq2bands(bandsplits, sr, n_fft)]
         self.layernorms = nn.ModuleList([
             nn.LayerNorm([t_timesteps, fc_dim])
             for _ in range(len(self.bandwidths))
         ])
         self.mlp = nn.ModuleList([
-            MLP(fc_dim, mlp_dim, bw*2, activation_type='tanh')
+            MLP(fc_dim, mlp_dim, bw * frequency_mul, activation_type='tanh')
             for bw in self.bandwidths
         ])
 
@@ -93,17 +106,22 @@ class MaskEstimationModule(nn.Module):
             # run through model
             out = self.layernorms[i](x[:, i])
             out = self.mlp[i](out)
-            # split tensor's real and imag parts and make complex Tensor
-            out = torch.complex(*out.chunk(2, dim=-1))
+            B, T, F = out.shape
+            # return to complex
+            if self.cac:
+                out = out.view(B, -1, 2, F//self.frequency_mul, T).permute(0, 1, 3, 4, 2)
+                out = torch.view_as_complex(out.contiguous())
+            else:
+                out = out.view(B, -1, F//self.frequency_mul, T).contiguous()
             outs.append(out)
 
         # concat all subbands
-        outs = torch.cat(outs, dim=-1).mT.unsqueeze(1)
+        outs = torch.cat(outs, dim=-2)
         return outs
 
 
 if __name__ == '__main__':
-    batch_size, k_subbands, t_timesteps, input_dim = 8, 41, 517, 128
+    batch_size, k_subbands, t_timesteps, input_dim = 8, 41, 259, 128
     in_features = torch.rand(batch_size, k_subbands, t_timesteps, input_dim)
 
     cfg = {
@@ -116,9 +134,11 @@ if __name__ == '__main__':
             (16000, 1000),
             (20000, 2000),
         ],
-        "t_timesteps": 517,
+        "t_timesteps": 259,
         "fc_dim": 128,
         "mlp_dim": 512,
+        "complex_as_channel": False,
+        "is_mono": False,
     }
     model = MaskEstimationModule(
         **cfg
@@ -129,4 +149,4 @@ if __name__ == '__main__':
         out_features = model(in_features)
 
     print(f"Total number of parameters: {sum([p.numel() for p in model.parameters()])}")
-    print(f"In: {in_features.shape}\nOut: {out_features.shape}")
+    print(f"In: {in_features.shape}\nOut: {out_features.shape}, Out dtype: {out_features.dtype}")

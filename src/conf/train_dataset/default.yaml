@@ -6,9 +6,7 @@ mode: train
 is_mono: True
 sr: 44100
 
-silent_prob: 0.0
-mix_prob: 1.0
-mix_version: v2
-mix_dbs: [0, 5] # for v1
-mix_tgt_too: False # for v2
+silent_prob: 0.1
+mix_prob: 0.25
+mix_tgt_too: False
 

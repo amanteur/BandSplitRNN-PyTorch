@@ -20,7 +20,6 @@ Unofficial PyTorch implementation of the paper [Music Source Separation with Ban
 ## TODOs
 
 - Train `other`/`bass`/`drums` models
-- Add Wiener Filter
 - Add Self-Supervised pipeline
 
 ---

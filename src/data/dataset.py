@@ -114,49 +114,7 @@ class SourceSeparationDataset(Dataset):
             torch.zeros_like(tgt_segment)
         )
 
-    @staticmethod
-    def db2amp(db):
-        return 10 ** (db / 20)
-
-    @staticmethod
-    def calc_rms(y: torch.Tensor, keepdim=True) -> torch.Tensor:
-        """
-        Calculate Power of audio signal.
-        """
-        return torch.sqrt(
-            torch.mean(torch.square(y), dim=-1, keepdim=keepdim)
-        )
-
-    def rms_normalize(self, y: torch.Tensor) -> torch.Tensor:
-        """
-        Power-normalize an audio signal.
-        """
-        rms = self.calc_rms(y, keepdim=True)
-        return y / (rms + 1e-8)
-
-    def mix_segmentsV1(
-            self,
-            mix_segment: torch.Tensor,
-            tgt_segment: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Mixing two mixtures and two targets from different files
-        """
-        fp_template_to_add, indices_to_add = random.choice(self.filelist)
-        mix_segment_to_add, tgt_segment_to_add = self.load_files(fp_template_to_add, indices_to_add)
-
-        db_scales = torch.empty(1).uniform_(*self.mix_dbs)
-
-        mix_segment_to_add = self.rms_normalize(mix_segment_to_add)
-        tgt_segment_to_add = self.rms_normalize(tgt_segment_to_add)
-
-        mix_segment += mix_segment_to_add * self.calc_rms(mix_segment) / self.db2amp(db_scales)
-        tgt_segment += tgt_segment_to_add * self.calc_rms(tgt_segment_to_add) / self.db2amp(db_scales)
-        return (
-            mix_segment, tgt_segment
-        )
-
-    def mix_segmentsV2(
+    def mix_segments(
             self,
             tgt_segment: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -180,7 +138,7 @@ class SourceSeparationDataset(Dataset):
                 fp_template_to_add.format(target), indices_to_add
             )
             # normalize it
-            segment_to_add /= segment_to_add.abs().max()
+            # segment_to_add /= segment_to_add.abs().max()
             mix_segment += segment_to_add
             if target == self.target:
                 tgt_segment += segment_to_add
@@ -210,14 +168,9 @@ class SourceSeparationDataset(Dataset):
                 )
             # mixing with other sources
             if random.random() < self.mix_prob:
-                if self.mix_version == 'v1':
-                    mix_segment, target_segment = self.mix_segmentsV1(
-                        mix_segment, target_segment
-                    )
-                elif self.mix_version == 'v2':
-                    mix_segment, target_segment = self.mix_segmentsV2(
-                        target_segment
-                    )
+                mix_segment, target_segment = self.mix_segmentsV2(
+                    target_segment
+                )
 
         return (
             mix_segment, target_segment

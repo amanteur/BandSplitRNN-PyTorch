@@ -48,7 +48,6 @@ parser.add_argument(
 args = parser.parse_args()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-_ = torch.set_grad_enabled(False)
 
 
 def initialize_all(
