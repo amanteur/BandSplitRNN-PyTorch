@@ -31,15 +31,16 @@ def get_minibatch(
 
 
 def overlap_add(
-        y: torch.Tensor, duration: int, step: int
+        y_in: torch.Tensor, duration: int, hl: int
 ) -> torch.Tensor:
     """
     overlap-add algorithm
     """
-    y_overlapped = torch.zeros((y.shape[1], duration))
-    start, end = 0, y.shape[-1]
-    for y_chunk in y:
-        y_overlapped[:, start:end] += y_chunk
-        start += step
-        end += step
-    return y_overlapped
+    wl = y.shape[-1]
+    start = 0
+
+    y_out = torch.zeros((y_in.shape[1], duration))
+    for y_i in y_in:
+        y_out[:, start:start + wl] += y_i
+        start += hl
+    return y_out / (wl / hl)

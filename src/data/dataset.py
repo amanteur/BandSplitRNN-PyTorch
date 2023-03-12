@@ -239,16 +239,16 @@ class TestSourceSeparationDataset(Dataset):
             y = torchaudio.transforms.Resample(
                 orig_freq=sr, new_freq=self.sr
             )(y)
-        # add padding
-        y = self.pad(y)
-        n_channels, duration = y.shape
         # setting to mono if necessary
         if self.is_mono:
             y = torch.mean(y, dim=0, keepdim=True)
-        elif n_channels == 1:
+        elif y.shape[0] == 1:
             y = y.repeat(2, 1)
-        # chunking if it is a mix
+        # padding and chunking if it is a mixture
+        duration = None
         if not is_tgt:
+            y = self.pad(y)
+            duration = y.shape[-1]
             y = y.unfold(
                 -1, self.win_size, self.hop_size
             )
@@ -257,7 +257,7 @@ class TestSourceSeparationDataset(Dataset):
 
     def __getitem__(
             self, index: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, int]:
+    ) -> Tuple[torch.Tensor, int, torch.Tensor]:
         fp_template = self.filelist[index]
         y, duration = self.load_file(
             fp_template.format('mixture'), is_tgt=False
@@ -266,7 +266,7 @@ class TestSourceSeparationDataset(Dataset):
             fp_template.format(self.target), is_tgt=True
         )
         return (
-            y, y_tgt, duration
+            y, duration, y_tgt
         )
 
     def __len__(self):

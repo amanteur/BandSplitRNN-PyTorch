@@ -1,12 +1,10 @@
 import argparse
 from pathlib import Path
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import OmegaConf
 import soundfile as sf
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
-import torch.nn as nn
-from torch.utils.data import Dataset
 
 from data import InferenceSourceSeparationDataset
 from train import initialize_model, initialize_featurizer
@@ -20,45 +18,35 @@ class InferenceProgram:
 
     def __init__(
             self,
-            in_path: str,
-            out_path: str,
+            in_file_path: str,
+            out_file_path: str,
             target: str,
             ckpt_path: Optional[str] = None,
 
     ):
-        # modules
-        model, featurizer, inverse_featurizer, cfg = self.initialize_all(target, ckpt_path)
+        tgt_dir = self.SAVED_MODELS_DIR / target
+        self.cfg_path = tgt_dir / 'hparams.yaml'
+        self.ckpt_path = next(iter(tgt_dir.glob('*.ckpt'))) if ckpt_path is None else ckpt_path
+        self.cfg = OmegaConf.load(self.cfg_path)
+        self.cfg.inference_dataset['in_file_path'] = in_file_path
+        self.cfg.inference_dataset['out_file_path'] = out_file_path
 
+        # modules
+        model, featurizer, inverse_featurizer, dataset = self.initialize_all()
         self.model = model
         self.featurizer = featurizer
         self.inverse_featurizer = inverse_featurizer
-        self.cfg = cfg
+        self.dataset = dataset
 
-        # data
-        self.dataset = InferenceSourceSeparationDataset(
-            in_path, out_path, **cfg.inference_dataset
-        )
-
-    def initialize_all(
-            self,
-            target: str,
-            ckpt_path: Optional[str] = None,
-    ) -> Tuple[nn.Module, nn.Module, nn.Module, DictConfig]:
-        tgt_dir = self.SAVED_MODELS_DIR / target
-
-        # load cfg
-        cfg_path = tgt_dir / 'hparams.yaml'
-        if ckpt_path is None:
-            ckpt_path = next(iter(tgt_dir.glob('*.ckpt')))
-
-        cfg = OmegaConf.load(cfg_path)
-
+    def initialize_all(self):
         # load featurizer, inverse_featurizer, and model
-        featurizer, inverse_featurizer = initialize_featurizer(cfg)
-        model, *_ = initialize_model(cfg)
+        featurizer, inverse_featurizer = initialize_featurizer(self.cfg)
+        model, *_ = initialize_model(self.cfg)
+        # load dataset
+        dataset = InferenceSourceSeparationDataset(**self.cfg.inference_dataset)
 
         # load checkpoint
-        state_dict = load_pl_state_dict(ckpt_path, device=self.DEVICE)
+        state_dict = load_pl_state_dict(self.ckpt_path, device=self.DEVICE)
         _ = model.load_state_dict(state_dict, strict=True)
         _ = model.eval()
 
@@ -67,14 +55,13 @@ class InferenceProgram:
         _ = inverse_featurizer.to(self.DEVICE)
         _ = model.to(self.DEVICE)
 
-        return model, featurizer, inverse_featurizer, cfg
+        return model, featurizer, inverse_featurizer, dataset
 
     @torch.no_grad()
     def inference_one(
             self,
             y: torch.Tensor,
             dur: int,
-
     ) -> torch.Tensor:
         # to device
         yT = y.to(self.DEVICE)
@@ -87,7 +74,7 @@ class InferenceProgram:
         # run through inverse featurizer
         yT_hat = self.inverse_featurizer(yS_hat, length=yT.shape[-1]).cpu()
         # overlap-add moment
-        yT_hat = overlap_add(yT_hat, dur, step=self.dataset.hop_size)
+        yT_hat = overlap_add(yT_hat, dur, hl=self.dataset.hop_size)
         # delete padded chunks
         yT_hat = yT_hat[:, self.dataset.pad_size:-self.dataset.pad_size]
         return yT_hat
@@ -96,6 +83,7 @@ class InferenceProgram:
         for item in self.dataset:
             # load dataset item
             y, y_dur, out_fp = item
+            # run inference on mixture
             y_hat = self.inference_one(y, y_dur)
             # save file as .wav
             sf.write(out_fp, y_hat.T, samplerate=self.dataset.sr)

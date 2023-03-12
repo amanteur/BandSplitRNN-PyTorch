@@ -1,7 +1,7 @@
 import argparse
 import logging
 from pathlib import Path
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 from collections import defaultdict
 from typing import Dict
 
@@ -16,102 +16,100 @@ from utils.utils_inference import load_pl_state_dict, get_minibatch, overlap_add
 from utils.utils_test import compute_SDRs
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+class EvaluateProgram:
 
+    DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    CFG_PATH = '{}/tb_logs/hparams.yaml'
+    CKPT_DIR = '{}/weights'
 
-@torch.no_grad()
-def evaluate_all(
-        model: nn.Module,
-        dataset: Dataset,
-        featurizer: nn.Module,
-        inverse_featurizer: nn.Module
-) -> Dict[str, np.ndarray]:
+    def __init__(
+            self,
+            run_dir: str
+    ):
+        self.cfg_path = Path(self.CFG_PATH.format(run_dir))
+        self.ckpt_dir = Path(self.CKPT_DIR.format(run_dir))
 
-    metrics = defaultdict(list)
+        self.cfg = OmegaConf.load(self.cfg_path)
+        logger.info(f"Used model: {self.cfg_path}")
 
-    for item in dataset:
-        # load dataset item
-        y_mix, y_tgt, y_mix_dur = item
-        input_length = y_mix.shape[-1]
+        logger.info("Initializing modules...")
+        model, featurizer, inverse_featurizer, dataset = self.initialize_all()
+        self.model = model
+        self.featurizer = featurizer
+        self.inverse_featurizer = inverse_featurizer
+        self.dataset = dataset
 
+    def initialize_all(self):
+        featurizer, inverse_featurizer = initialize_featurizer(self.cfg)
+        model, *_ = initialize_model(self.cfg)
+        _ = model.eval()
+
+        _ = featurizer.to(self.DEVICE)
+        _ = inverse_featurizer.to(self.DEVICE)
+        _ = model.to(self.DEVICE)
+
+        dataset = TestSourceSeparationDataset(**self.cfg.test_dataset)
+
+        return model, featurizer, inverse_featurizer, dataset
+
+    @torch.no_grad()
+    def inference_one(
+            self,
+            y: torch.Tensor,
+            dur: int,
+    ) -> torch.Tensor:
+        # to device
+        yT = y.to(self.DEVICE)
         # run through featurizer
-        y_mix = featurizer(y_mix.to(device))
-
+        yS = self.featurizer(yT)
         # run through model
-        y_hat = torch.empty_like(y_mix)
-        for s, e in get_minibatch(y_mix.shape[0]):
-            y_hat[s:e] = model(y_mix[s:e])
-
+        yS_hat = torch.empty_like(yS)
+        for s, e in get_minibatch(yS.shape[0]):
+            yS_hat[s:e] = self.model(yS[s:e])
         # run through inverse featurizer
-        y_hat = inverse_featurizer(y_hat, length=input_length).cpu()
+        yT_hat = self.inverse_featurizer(yS_hat, length=yT.shape[-1]).cpu()
         # overlap-add moment
-        y_hat = overlap_add(y_hat, y_mix_dur, step=dataset.hop_size)
-
+        yT_hat = overlap_add(yT_hat, dur, hl=self.dataset.hop_size)
         # delete padded chunks
-        y_hat = y_hat[:, dataset.pad_size:-dataset.pad_size]
-        y_tgt = y_tgt[:, dataset.pad_size:-dataset.pad_size]
+        yT_hat = yT_hat[:, self.dataset.pad_size:-self.dataset.pad_size]
+        return yT_hat
 
-        # compute and save metrics
-        cSDR, uSDR = compute_SDRs(y_hat, y_tgt)
+    @torch.no_grad()
+    def evaluate_all(self) -> Dict[str, np.ndarray]:
+        metrics = defaultdict(list)
+        for item in self.dataset:
+            # load dataset item
+            y, y_dur, y_tgt = item
+            # run inference on mixture
+            y_hat = self.inference_one(y, y_dur)
+            # compute and save metrics
+            cSDR, uSDR = compute_SDRs(y_hat, y_tgt)
 
-        metrics['cSDR'].append(cSDR)
-        metrics['uSDR'].append(uSDR)
+            metrics['cSDR'].append(cSDR)
+            metrics['uSDR'].append(uSDR)
 
-    metrics['cSDR'] = np.array(metrics['cSDR'])
-    metrics['uSDR'] = np.array(metrics['uSDR'])
+        metrics['cSDR'] = np.array(metrics['cSDR'])
+        metrics['uSDR'] = np.array(metrics['uSDR'])
+        return metrics
 
-    return metrics
-
-
-def evaluate(
-        ckpt_dir_path: Path,
-        model: nn.Module,
-        dataset: Dataset,
-        featurizer: nn.Module,
-        inverse_featurizer: nn.Module
-) -> None:
-
-    for ckpt_path in ckpt_dir_path.glob("*.ckpt"):
-        logger.info(f"Evaluating checkpoint - {ckpt_path.name}")
-        state_dict = load_pl_state_dict(ckpt_path, device=device)
-        _ = model.load_state_dict(state_dict, strict=True)
-
-        metrics = evaluate_all(
-            model, dataset,
-            featurizer, inverse_featurizer
-        )
-        for m in metrics:
-            logger.info(
-                f"Metric - {m}, mean - {metrics[m].mean():.3f}, std - {metrics[m].std():.3f}"
-            )
-
-    return None
+    def evaluate(self) -> None:
+        for ckpt_path in self.ckpt_dir.glob("*.ckpt"):
+            logger.info(f"Evaluating checkpoint - {ckpt_path.name}")
+            state_dict = load_pl_state_dict(ckpt_path, device=self.DEVICE)
+            _ = self.model.load_state_dict(state_dict, strict=True)
+            metrics = self.evaluate_all()
+            for m in metrics:
+                logger.info(
+                    f"Metric - {m}, mean - {metrics[m].mean():.3f}, std - {metrics[m].std():.3f}"
+                )
+        return None
 
 
 def main(run_dir: str):
     logger.info("Starting evaluation...")
-    run_dir = Path(run_dir)
-    cfg_path = run_dir / 'tb_logs/hparams.yaml'
-    ckpt_dir_path = run_dir / 'weights'
-    cfg = OmegaConf.load(cfg_path)
-    logger.info(f"Used model: {cfg_path}")
-
-    logger.info("Initializing modules...")
-    dataset = TestSourceSeparationDataset(**cfg.test_dataset)
-    featurizer, inverse_featurizer = initialize_featurizer(cfg)
-    model, *_ = initialize_model(cfg)
-    _ = model.eval()
-
-    _ = featurizer.to(device)
-    _ = inverse_featurizer.to(device)
-    _ = model.to(device)
-
+    program = EvaluateProgram(run_dir)
     logger.info("Starting evaluation run...")
-    evaluate(
-        ckpt_dir_path,
-        model, dataset,
-        featurizer, inverse_featurizer,
-    )
+    program.evaluate()
 
 
 if __name__ == '__main__':
