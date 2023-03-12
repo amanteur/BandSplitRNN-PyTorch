@@ -2,6 +2,8 @@
 
 Unofficial PyTorch implementation of the paper [Music Source Separation with Band-split RNN](https://arxiv.org/pdf/2209.15174.pdf).
 
+![architecture](images/architecture.png)
+
 ---
 ## Table of Contents
 

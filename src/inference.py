@@ -12,105 +12,94 @@ from data import InferenceSourceSeparationDataset
 from train import initialize_model, initialize_featurizer
 from utils.utils_inference import load_pl_state_dict, get_minibatch, overlap_add
 
-SAVED_MODELS_DIR = Path("./saved_models")
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    '-i',
-    '--in-path',
-    type=str,
-    required=True,
-    help="Path to the input directory/file with .wav/.mp3 extensions."
-)
-parser.add_argument(
-    '-o',
-    '--out-path',
-    type=str,
-    required=True,
-    help="Path to the output directory. Files will be saved in .wav format with sr=44100."
-)
-parser.add_argument(
-    '-t',
-    '--target',
-    type=str,
-    required=False,
-    default='vocals',
-    help="Name of the target source to extract. "
-)
-parser.add_argument(
-    '-c',
-    '--ckpt-path',
-    type=str,
-    required=False,
-    default=None,
-    help="Path to model's checkpoint. If not specified, the .ckpt from SAVED_MODELS_DIR/{target} is used."
-)
-args = parser.parse_args()
+class InferenceProgram:
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    SAVED_MODELS_DIR = Path("./saved_models")
+    DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+    def __init__(
+            self,
+            in_path: str,
+            out_path: str,
+            target: str,
+            ckpt_path: Optional[str] = None,
 
-def initialize_all(
-        target: str,
-        ckpt_path: Optional[str] = None,
-) -> Tuple[nn.Module, nn.Module, nn.Module, DictConfig]:
-    tgt_dir = SAVED_MODELS_DIR / target
+    ):
+        # modules
+        model, featurizer, inverse_featurizer, cfg = self.initialize_all(target, ckpt_path)
 
-    # load cfg
-    cfg_path = tgt_dir / 'hparams.yaml'
-    if ckpt_path is None:
-        ckpt_path = next(iter(tgt_dir.glob('*.ckpt')))
+        self.model = model
+        self.featurizer = featurizer
+        self.inverse_featurizer = inverse_featurizer
+        self.cfg = cfg
 
-    cfg = OmegaConf.load(cfg_path)
+        # data
+        self.dataset = InferenceSourceSeparationDataset(
+            in_path, out_path, **cfg.inference_dataset
+        )
 
-    # load featurizer, inverse_featurizer, and model
-    featurizer, inverse_featurizer = initialize_featurizer(cfg)
-    model, *_ = initialize_model(cfg)
+    def initialize_all(
+            self,
+            target: str,
+            ckpt_path: Optional[str] = None,
+    ) -> Tuple[nn.Module, nn.Module, nn.Module, DictConfig]:
+        tgt_dir = self.SAVED_MODELS_DIR / target
 
-    # load checkpoint
-    state_dict = load_pl_state_dict(ckpt_path, device=device)
-    _ = model.load_state_dict(state_dict, strict=True)
-    _ = model.eval()
+        # load cfg
+        cfg_path = tgt_dir / 'hparams.yaml'
+        if ckpt_path is None:
+            ckpt_path = next(iter(tgt_dir.glob('*.ckpt')))
 
-    # send all to device
-    _ = featurizer.to(device)
-    _ = inverse_featurizer.to(device)
-    _ = model.to(device)
+        cfg = OmegaConf.load(cfg_path)
 
-    return model, featurizer, inverse_featurizer, cfg
+        # load featurizer, inverse_featurizer, and model
+        featurizer, inverse_featurizer = initialize_featurizer(cfg)
+        model, *_ = initialize_model(cfg)
 
+        # load checkpoint
+        state_dict = load_pl_state_dict(ckpt_path, device=self.DEVICE)
+        _ = model.load_state_dict(state_dict, strict=True)
+        _ = model.eval()
 
-@torch.no_grad()
-def run_inference(
-        model: nn.Module,
-        featurizer: nn.Module,
-        inverse_featurizer: nn.Module,
-        dataset: Dataset
-) -> None:
-    for item in dataset:
-        # load dataset item
-        y, y_dur, out_fp = item
-        segment_length = y.shape[-1]
+        # send all to device
+        _ = featurizer.to(self.DEVICE)
+        _ = inverse_featurizer.to(self.DEVICE)
+        _ = model.to(self.DEVICE)
 
+        return model, featurizer, inverse_featurizer, cfg
+
+    @torch.no_grad()
+    def inference_one(
+            self,
+            y: torch.Tensor,
+            dur: int,
+
+    ) -> torch.Tensor:
+        # to device
+        yT = y.to(self.DEVICE)
         # run through featurizer
-        y = featurizer(y.to(device))
-
+        yS = self.featurizer(yT)
         # run through model
-        y_hat = torch.empty_like(y)
-        for s, e in get_minibatch(y.shape[0]):
-            y_hat[s:e] = model(y[s:e])
-
+        yS_hat = torch.empty_like(yS)
+        for s, e in get_minibatch(yS.shape[0]):
+            yS_hat[s:e] = self.model(yS[s:e])
         # run through inverse featurizer
-        y_hat = inverse_featurizer(y_hat, length=segment_length).cpu()
+        yT_hat = self.inverse_featurizer(yS_hat, length=yT.shape[-1]).cpu()
         # overlap-add moment
-        y_hat = overlap_add(y_hat, y_dur, step=dataset.hop_size)
-
+        yT_hat = overlap_add(yT_hat, dur, step=self.dataset.hop_size)
         # delete padded chunks
-        y_hat = y_hat[:, dataset.pad_size:-dataset.pad_size]
+        yT_hat = yT_hat[:, self.dataset.pad_size:-self.dataset.pad_size]
+        return yT_hat
 
-        # save file as .wav
-        sf.write(out_fp, y_hat.T, samplerate=dataset.sr)
-    return None
+    def inference_all(self) -> None:
+        for item in self.dataset:
+            # load dataset item
+            y, y_dur, out_fp = item
+            y_hat = self.inference_one(y, y_dur)
+            # save file as .wav
+            sf.write(out_fp, y_hat.T, samplerate=self.dataset.sr)
+        return None
 
 
 def main(
@@ -119,16 +108,45 @@ def main(
         target: str,
         ckpt_path: Optional[str] = None,
 ) -> None:
-    # initialize all modules
-    model, featurizer, inverse_featurizer, cfg = initialize_all(target, ckpt_path)
-    # initialize dataset
-    dataset = InferenceSourceSeparationDataset(in_path, out_path, **cfg.inference_dataset)
-
-    run_inference(model, featurizer, inverse_featurizer, dataset)
+    program = InferenceProgram(in_path, out_path, target, ckpt_path)
+    program.inference_all()
     return None
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-i',
+        '--in-path',
+        type=str,
+        required=True,
+        help="Path to the input directory/file with .wav/.mp3 extensions."
+    )
+    parser.add_argument(
+        '-o',
+        '--out-path',
+        type=str,
+        required=True,
+        help="Path to the output directory. Files will be saved in .wav format with sr=44100."
+    )
+    parser.add_argument(
+        '-t',
+        '--target',
+        type=str,
+        required=False,
+        default='vocals',
+        help="Name of the target source to extract. "
+    )
+    parser.add_argument(
+        '-c',
+        '--ckpt-path',
+        type=str,
+        required=False,
+        default=None,
+        help="Path to model's checkpoint. If not specified, the .ckpt from SAVED_MODELS_DIR/{target} is used."
+    )
+    args = parser.parse_args()
+
     main(
         args.in_path,
         args.out_path,

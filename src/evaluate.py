@@ -15,30 +15,12 @@ from train import initialize_model, initialize_featurizer
 from utils.utils_inference import load_pl_state_dict, get_minibatch, overlap_add
 from utils.utils_test import compute_SDRs
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    '-d',
-    '--run-dir',
-    type=str,
-    required=True,
-    help="Path to directory checkpoints, configs, etc"
-)
-args = parser.parse_args()
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)-8s %(message)s',
-    datefmt='%a, %d %b %Y %H:%M:%S',
-    filename=f'{args.run_dir}/test.log',
-    filemode='w'
-)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 @torch.no_grad()
-def run_eval_loop(
+def evaluate_all(
         model: nn.Module,
         dataset: Dataset,
         featurizer: nn.Module,
@@ -81,7 +63,7 @@ def run_eval_loop(
     return metrics
 
 
-def run_eval(
+def evaluate(
         ckpt_dir_path: Path,
         model: nn.Module,
         dataset: Dataset,
@@ -94,7 +76,7 @@ def run_eval(
         state_dict = load_pl_state_dict(ckpt_path, device=device)
         _ = model.load_state_dict(state_dict, strict=True)
 
-        metrics = run_eval_loop(
+        metrics = evaluate_all(
             model, dataset,
             featurizer, inverse_featurizer
         )
@@ -125,7 +107,7 @@ def main(run_dir: str):
     _ = model.to(device)
 
     logger.info("Starting evaluation run...")
-    run_eval(
+    evaluate(
         ckpt_dir_path,
         model, dataset,
         featurizer, inverse_featurizer,
@@ -133,4 +115,23 @@ def main(run_dir: str):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-d',
+        '--run-dir',
+        type=str,
+        required=True,
+        help="Path to directory checkpoints, configs, etc"
+    )
+    args = parser.parse_args()
+
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        datefmt='%a, %d %b %Y %H:%M:%S',
+        filename=f'{args.run_dir}/test.log',
+        filemode='w'
+    )
+
     main(args.run_dir)
