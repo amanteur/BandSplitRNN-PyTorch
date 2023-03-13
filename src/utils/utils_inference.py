@@ -36,7 +36,7 @@ def overlap_add(
     """
     overlap-add algorithm
     """
-    wl = y.shape[-1]
+    wl = y_in.shape[-1]
     start = 0
 
     y_out = torch.zeros((y_in.shape[1], duration))
