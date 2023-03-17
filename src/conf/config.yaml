@@ -22,7 +22,7 @@ val_loader:
   shuffle: False
   drop_last: False
 
-# optimizer and scheduler
+# optimization
 opt:
   _target_: torch.optim.Adam
   lr: 1e-3
@@ -54,12 +54,10 @@ trainer:
   benchmark: True
   deterministic: True
 
-
+# hydra
 experiment_dirname: bandsplitrnn
 hydra:
   run:
     dir: logs/${...experiment_dirname}/${now:%Y-%m-%d}_${now:%H-%M}
   job:
     chdir: False
-
-

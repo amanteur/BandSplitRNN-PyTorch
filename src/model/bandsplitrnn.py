@@ -64,7 +64,6 @@ class BandSplitRNN(nn.Module):
         Wiener filtering of the input signal
         """
         # TODO: add Wiener Filtering
-        [x_hat, x_complex.imag]
         return x_hat
 
     def compute_mask(self, x: torch.Tensor) -> torch.Tensor:
@@ -84,6 +83,7 @@ class BandSplitRNN(nn.Module):
         Output shape: batch_size, n_channels, freq, time]
         """
         # use only magnitude if not using complex input
+        x_complex = None
         if not self.cac:
             x_complex = x
             x = x.abs()
@@ -91,13 +91,13 @@ class BandSplitRNN(nn.Module):
         # TODO: Try to normalize in bandsplit and denormalize in maskest
         mean = x.mean(dim=(1, 2, 3), keepdim=True)
         std = x.std(dim=(1, 2, 3), keepdim=True)
-        x = (x - mean) / (1e-5 + std)
+        x = (x - mean) / (std + 1e-5)
 
         # compute T-F mask
         mask = self.compute_mask(x)
 
         # multiply with original tensor
-        x = mask * x
+        x = mask if self.return_mask else mask * x
 
         # denormalize
         x = x * std + mean
@@ -105,9 +105,6 @@ class BandSplitRNN(nn.Module):
         if not self.cac:
             x = self.wiener(x, x_complex)
 
-
-        if self.return_mask:
-            return x, mask
         return x
 
 

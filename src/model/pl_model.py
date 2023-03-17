@@ -15,7 +15,7 @@ class PLModel(pl.LightningModule):
             augmentations: nn.Module,
             opt: Optimizer,
             sch: lr_scheduler._LRScheduler,
-            hparams: DictConfig
+            hparams: DictConfig = None
     ):
         super().__init__()
 
@@ -47,29 +47,31 @@ class PLModel(pl.LightningModule):
         """
         Input shape: [batch_size, n_sources, n_channels, time]
         """
-        loss, loss_dict = self.step(batch)
+        loss, loss_dict, usdr = self.step(batch)
 
         # logging
         for k in loss_dict:
             self.log(f"train/{k}", loss_dict[k].detach(), on_epoch=True, on_step=False)
         self.log("train/loss", loss.detach(), on_epoch=True, on_step=False)
+        self.log("train/usdr", usdr.detach(), on_epoch=True, on_step=False)
 
         return loss
 
     def validation_step(
             self, batch, batch_idx
     ) -> torch.Tensor:
-        loss, loss_dict = self.step(batch)
+        loss, loss_dict, usdr = self.step(batch)
         # logging
         for k in loss_dict:
             self.log(f"val/{k}", loss_dict[k])
         self.log("val/loss", loss, prog_bar=True)
+        self.log("val/usdr", usdr, prog_bar=True)
 
         return loss
 
     def step(
             self, batch
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         """
         Input shape: [batch_size, n_sources, n_channels, time]
         """
@@ -87,7 +89,8 @@ class PLModel(pl.LightningModule):
             tgt_freq_hat, tgt_freq,
             tgt_time_hat, tgt_time
         )
-        return loss, loss_dict
+        usdr = self.compute_usdr(tgt_time_hat, tgt_time)
+        return loss, loss_dict, usdr
 
     def compute_losses(
             self,
@@ -115,8 +118,21 @@ class PLModel(pl.LightningModule):
         loss = lossR + lossI + lossT
         return loss, loss_dict
 
+    @staticmethod
+    def compute_usdr(
+            y_hat: torch.Tensor,
+            y_tgt: torch.Tensor,
+            delta: float = 1e-7
+    ) -> torch.Tensor:
+        num = torch.sum(torch.square(y_tgt), dim=(1, 2))
+        den = torch.sum(torch.square(y_tgt - y_hat), dim=(1, 2))
+        num += delta
+        den += delta
+        usdr = 10 * torch.log10(num / den)
+        return usdr.mean()
+
     def on_before_optimizer_step(
-        self, optimizer, optimizer_idx
+            self, optimizer, optimizer_idx
     ):
         norms = pl.utilities.grad_norm(self, norm_type=2)
         norms = dict(filter(lambda elem: '_total' in elem[0], norms.items()))

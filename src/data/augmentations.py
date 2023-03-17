@@ -12,12 +12,13 @@ class RandomCrop(nn.Module):
             self,
             p: float = 1.,
             chunk_size_sec: int = 3,
+            first_chunk: bool = False,
             sr: int = 44100
     ):
         super().__init__()
         self.p = p
         self.chunk_size = chunk_size_sec * sr
-
+        self.first_chunk = first_chunk
         self.eval_step = 1 * sr
 
     def forward(
@@ -26,13 +27,13 @@ class RandomCrop(nn.Module):
         B, S, C, T = y.shape
 
         if self.training and random.random() < self.p:
-            start = random.randrange(0, T - self.chunk_size)
+            start = random.randrange(0, T - self.chunk_size) if not self.first_chunk else 0
             end = start + self.chunk_size
             y = y[..., start:end]
         if not self.training:
             y = y.unfold(-1, self.chunk_size, self.eval_step)
             n_chunks = y.shape[-2]
-            y = y.permute(0, 3, 1, 2, 4).contiguous().view(B*n_chunks, S, C, self.chunk_size)
+            y = y.permute(0, 3, 1, 2, 4).contiguous().view(B * n_chunks, S, C, self.chunk_size)
         return y
 
 
@@ -40,6 +41,7 @@ class GainScale(nn.Module):
     """
     Randomly scales the energy of a chunk in some dB range.
     """
+
     def __init__(
             self,
             p: float = 1.,
@@ -63,7 +65,7 @@ class GainScale(nn.Module):
 
         if self.training and random.random() < self.p:
             db_scales = torch.empty(
-                B, S, 1, 1, device=device
+                B, 1, 1, 1, device=device
             ).uniform_(self.min_db, self.max_db)
             y *= self.db2amp(db_scales)
         return y
@@ -73,6 +75,7 @@ class Mix(nn.Module):
     """
     Mixes random target sources into mixtures.
     """
+
     def __init__(
             self,
             p: float = 0.5,

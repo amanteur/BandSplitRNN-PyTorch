@@ -32,8 +32,8 @@ def compute_SDRs(
     y_tgt = y_tgt.T.unsqueeze(0).numpy()
     # bss_eval way
     cSDR, *_ = bss_eval(
-        y_hat,
-        y_tgt
+        y_tgt,
+        y_hat
     )
     cSDR = np.nanmedian(cSDR)
 

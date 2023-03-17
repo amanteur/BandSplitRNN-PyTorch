@@ -4,8 +4,7 @@ import torchaudio
 import torch.nn.functional as F
 import random
 from pathlib import Path
-from typing import List, Set, Tuple, Union
-import numpy as np
+from typing import List, Set, Tuple
 
 
 class SourceSeparationDataset(Dataset):
@@ -21,7 +20,7 @@ class SourceSeparationDataset(Dataset):
             txt_path: str = None,
             target: str = 'vocals',
             is_mono: bool = False,
-            mode: str = 'train',  # valid
+            is_training: bool = True,
             sr: int = 44100,
             silent_prob: float = 0.1,
             mix_prob: float = 0.1,
@@ -30,11 +29,12 @@ class SourceSeparationDataset(Dataset):
             mix_dbs: Tuple[int, int] = (0, 5)
     ):
         self.file_dir = Path(file_dir)
-        self.mode = mode
+        self.is_training = is_training
         self.target = target
         self.sr = sr
 
         if txt_path is None and txt_dir is not None:
+            mode = 'train' if self.is_training else 'valid'
             self.txt_path = Path(txt_dir) / f"{target}_{mode}.txt"
         elif txt_path is not None and txt_dir is None:
             self.txt_path = Path(txt_path)
@@ -160,7 +160,7 @@ class SourceSeparationDataset(Dataset):
         mix_segment, target_segment = self.load_files(fp_template, indices)
 
         # augmentations related to mixing/dropping sources
-        if self.mode == 'train':
+        if self.is_training:
             # dropping target
             if random.random() < self.silent_prob:
                 mix_segment, target_segment = self.imitate_silent_segments(
@@ -168,7 +168,7 @@ class SourceSeparationDataset(Dataset):
                 )
             # mixing with other sources
             if random.random() < self.mix_prob:
-                mix_segment, target_segment = self.mix_segmentsV2(
+                mix_segment, target_segment = self.mix_segments(
                     target_segment
                 )
 
@@ -184,7 +184,6 @@ class TestSourceSeparationDataset(Dataset):
     """
     Dataset class for working with test data from MUSDB18 dataset.
     """
-
     def __init__(
             self,
             file_dir: str,
