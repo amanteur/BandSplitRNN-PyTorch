@@ -12,14 +12,20 @@ class RandomCrop(nn.Module):
             self,
             p: float = 1.,
             chunk_size_sec: int = 3,
+            window_stft: int = 2048,
+            hop_stft: int = 512,
             first_chunk: bool = False,
             sr: int = 44100
     ):
         super().__init__()
         self.p = p
+
         self.chunk_size = chunk_size_sec * sr
+        # additional space to match stft hop size
+        pad_chunk = window_stft - self.chunk_size % hop_stft
+        self.chunk_size = self.chunk_size + pad_chunk
+        self.eval_step = 1 * sr + pad_chunk
         self.first_chunk = first_chunk
-        self.eval_step = 1 * sr
 
     def forward(
             self, y: torch.Tensor

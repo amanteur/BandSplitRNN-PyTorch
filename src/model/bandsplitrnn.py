@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from typing import List, Tuple
+import typing as tp
 
-from .modules import BandSplitModule, BandSequenceModelModule, MaskEstimationModule
+from .modules import BandSplitModule, BandSequenceModelModule, MaskEstimationModule, BandTransformerModelModule
 
 
 class BandSplitRNN(nn.Module):
@@ -14,9 +14,10 @@ class BandSplitRNN(nn.Module):
             self,
             sr: int,
             n_fft: int,
-            bandsplits: List[Tuple[int, int]],
+            bandsplits: tp.List[tp.Tuple[int, int]],
             complex_as_channel: bool,
             is_mono: bool,
+            bottleneck_layer: str,
             t_timesteps: int,
             fc_dim: int,
             rnn_dim: int,
@@ -28,6 +29,7 @@ class BandSplitRNN(nn.Module):
     ):
         super(BandSplitRNN, self).__init__()
 
+        # encoder layer
         self.bandsplit = BandSplitModule(
             sr=sr,
             n_fft=n_fft,
@@ -37,15 +39,26 @@ class BandSplitRNN(nn.Module):
             complex_as_channel=complex_as_channel,
             is_mono=is_mono,
         )
-        self.bandsequence = BandSequenceModelModule(
-            k_subbands=len(self.bandsplit.bandwidth_indices),
-            t_timesteps=t_timesteps,
-            input_dim_size=fc_dim,
-            hidden_dim_size=rnn_dim,
-            rnn_type=rnn_type,
-            bidirectional=bidirectional,
-            num_layers=num_layers,
-        )
+
+        # bottleneck layer
+        if bottleneck_layer == 'rnn':
+            self.bandsequence = BandSequenceModelModule(
+                input_dim_size=fc_dim,
+                hidden_dim_size=rnn_dim,
+                rnn_type=rnn_type,
+                bidirectional=bidirectional,
+                num_layers=num_layers,
+            )
+        elif bottleneck_layer == 'att':
+            self.bandsequence = BandTransformerModelModule(
+                input_dim_size=fc_dim,
+                hidden_dim_size=rnn_dim,
+                num_layers=num_layers,
+            )
+        else:
+            raise NotImplementedError
+
+        # decoder layer
         self.maskest = MaskEstimationModule(
             sr=sr,
             n_fft=n_fft,
@@ -123,6 +136,7 @@ if __name__ == '__main__':
         ],
         "complex_as_channel": True,
         "is_mono": n_channels == 1,
+        "bottleneck_layer": 'rnn',
         "t_timesteps": 259,
         "fc_dim": 128,
         "rnn_dim": 256,

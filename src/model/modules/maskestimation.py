@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import List, Tuple
+import typing as tp
 
 from .utils import freq2bands
 
@@ -67,7 +67,7 @@ class MaskEstimationModule(nn.Module):
             self,
             sr: int,
             n_fft: int,
-            bandsplits: List[Tuple[int, int]],
+            bandsplits: tp.List[tp.Tuple[int, int]],
             t_timesteps: int = 517,
             fc_dim: int = 128,
             mlp_dim: int = 512,

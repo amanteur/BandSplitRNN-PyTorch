@@ -2,9 +2,10 @@ import hydra
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
-from typing import Tuple
+import typing as tp
 import shutil
 
+import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
@@ -14,24 +15,25 @@ from data import SourceSeparationDataset, collate_fn
 from model import BandSplitRNN, PLModel
 
 import logging
+import traceback
 
 log = logging.getLogger(__name__)
 
 
-def initialize_loaders(cfg: DictConfig) -> Tuple[DataLoader, DataLoader]:
+def initialize_loaders(cfg: DictConfig) -> tp.Tuple[DataLoader, DataLoader]:
     """
     Initializes train and validation dataloaders from configuration file.
     """
     train_dataset = SourceSeparationDataset(
         **cfg.train_dataset,
     )
-    val_dataset = SourceSeparationDataset(
-        **cfg.val_dataset,
-    )
     train_loader = DataLoader(
         train_dataset,
         **cfg.train_loader,
         collate_fn=collate_fn
+    )
+    val_dataset = SourceSeparationDataset(
+        **cfg.val_dataset,
     )
     val_loader = DataLoader(
         val_dataset,
@@ -46,7 +48,7 @@ def initialize_loaders(cfg: DictConfig) -> Tuple[DataLoader, DataLoader]:
 
 def initialize_featurizer(
         cfg: DictConfig
-) -> Tuple[nn.Module, nn.Module]:
+) -> tp.Tuple[nn.Module, nn.Module]:
     """
     Initializes direct and inverse featurizers for audio.
     """
@@ -72,13 +74,15 @@ def initialize_augmentations(
 
 def initialize_model(
         cfg: DictConfig
-) -> Tuple[nn.Module, Optimizer, lr_scheduler._LRScheduler]:
+) -> tp.Tuple[nn.Module, Optimizer, lr_scheduler._LRScheduler]:
     """
     Initializes model from configuration file.
     """
+    # initialize model
     model = BandSplitRNN(
         **cfg.model
     )
+    # initialize optimizer
     if 'opt' in cfg:
         opt = instantiate(
             cfg.opt,
@@ -86,11 +90,25 @@ def initialize_model(
         )
     else:
         opt = None
+    # initialize scheduler
     if 'sch' in cfg:
-        sch = instantiate(
-            cfg.sch,
-            optimizer=opt
-        )
+        if '_target_' in cfg.sch:
+            # other than LambdaLR
+            sch = instantiate(
+                cfg.sch,
+                optimizer=opt
+            )
+        else:
+            # if LambdaLR
+            lr_lambda = lambda epoch: (
+                cfg.sch.alpha ** (cfg.sch.warmup_step - epoch)
+                if epoch <= cfg.sch.warmup_step
+                else cfg.sch.gamma ** epoch
+            )
+            sch = torch.optim.lr_scheduler.LambdaLR(
+                optimizer=opt,
+                lr_lambda=lr_lambda
+            )
     else:
         sch = None
     return model, opt, sch
@@ -151,7 +169,8 @@ def my_app(cfg: DictConfig) -> None:
             ckpt_path=cfg.ckpt_path
         )
     except Exception as e:
-        log.error(str(e))
+        log.error(traceback.format_exc())
+
     log.info("Training finished!")
 
     if cfg.trainer.fast_dev_run:

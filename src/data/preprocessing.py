@@ -1,5 +1,5 @@
 import torch
-from typing import Optional
+import typing as tp
 
 
 class SAD:
@@ -76,7 +76,7 @@ class SAD:
     def __call__(
             self,
             y: torch.Tensor,
-            segment_saliency_mask: Optional[torch.Tensor] = None
+            segment_saliency_mask: tp.Optional[torch.Tensor] = None
     ):
         """
         Stacks signal into segments and filters out silent segments.

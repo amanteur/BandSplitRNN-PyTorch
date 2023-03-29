@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from museval.metrics import bss_eval
-from typing import Tuple
+import typing as tp
 
 
 def compute_uSDR(
@@ -24,7 +24,7 @@ def compute_uSDR(
 
 def compute_SDRs(
         y_hat: torch.Tensor, y_tgt: torch.Tensor
-) -> Tuple[float, float]:
+) -> tp.Tuple[float, float]:
     """
     Computes cSDR and uSDR as defined in paper
     """

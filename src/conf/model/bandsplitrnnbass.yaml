@@ -6,11 +6,15 @@ bandsplits:
   - [4000, 500]
   - [8000, 1000]
   - [16000, 2000]
-t_timesteps: 259
+bottleneck_layer: "rnn"
+t_timesteps: 263
 fc_dim: 128
 rnn_dim: 256
 rnn_type: "LSTM"
 bidirectional: True
-num_layers: 1 # 12
+num_layers: 12
 mlp_dim: 512
 return_mask: False
+
+complex_as_channel: True
+is_mono: ${..train_dataset.is_mono}

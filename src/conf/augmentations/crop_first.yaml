@@ -2,5 +2,7 @@ randomcrop:
   _target_: data.augmentations.RandomCrop
   p: 1.0
   chunk_size_sec: 3
-  first_chunk: False
+  window_stft: ${...featurizer.direct_transform.win_length}
+  hop_stft: ${...featurizer.direct_transform.hop_length}
+  first_chunk: True
   sr: 44100

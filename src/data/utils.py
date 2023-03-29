@@ -1,9 +1,9 @@
 import torch
-from typing import List, Tuple
+import typing as tp
 
 
 def collate_fn(
-        batch: List[Tuple[torch.Tensor, torch.Tensor]]
+        batch: tp.List[tp.Tuple[torch.Tensor, torch.Tensor]]
 ) -> torch.Tensor:
     """
     Collates list of mix and target torch.Tensors to torch.Tensor.

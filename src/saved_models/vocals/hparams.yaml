@@ -7,7 +7,8 @@ model:
     - [ 8000, 500 ]
     - [ 16000, 1000 ]
     - [ 20000, 2000 ]
-  t_timesteps: 259
+  t_timesteps: 263
+  bottleneck_layer: 'rnn'
   fc_dim: 128
   rnn_dim: 256
   rnn_type: "LSTM"
@@ -33,9 +34,12 @@ featurizer:
     win_length: 2048
     hop_length: 512
 
-inference_dataset:
-  target: vocals
+audio_params:
+  target: 'vocals'
   is_mono: false
   sr: 44100
   win_size: 3
-  hop_size: 1.5
+  hop_size: 0.5
+  batch_size: 8
+  # window: 'hann'
+  window: null

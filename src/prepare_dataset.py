@@ -3,7 +3,7 @@ import musdb
 import torch
 from omegaconf import OmegaConf, DictConfig
 from pathlib import Path
-from typing import Iterable, Optional, List
+import typing as tp
 from tqdm import tqdm
 from data import SAD
 
@@ -59,7 +59,7 @@ def prepare_save_line(
         track_name: str,
         start_indices: torch.Tensor,
         window_size: int
-) -> Iterable[str]:
+) -> tp.Iterable[str]:
     """
     Creates string in format TRACK_NAME START_INDEX END_INDEX.
     """
@@ -96,8 +96,8 @@ def main(
         db_dir: str,
         save_dir: str,
         subset: str,
-        split: Optional[str],
-        targets: List[str],
+        split: tp.Optional[str],
+        targets: tp.List[str],
         sad_cfg_path: DictConfig
 ) -> None:
     # initialize MUSDB parser

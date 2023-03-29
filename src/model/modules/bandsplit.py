@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import List, Tuple, Iterator
+import typing as tp
 
 from .utils import freq2bands
 
@@ -15,7 +15,7 @@ class BandSplitModule(nn.Module):
             self,
             sr: int,
             n_fft: int,
-            bandsplits: List[Tuple[int, int]],
+            bandsplits: tp.List[tp.Tuple[int, int]],
             t_timesteps: int = 517,
             fc_dim: int = 128,
             complex_as_channel: bool = True,
@@ -44,7 +44,7 @@ class BandSplitModule(nn.Module):
     def generate_subband(
             self,
             x: torch.Tensor
-    ) -> Iterator[torch.Tensor]:
+    ) -> tp.Iterator[torch.Tensor]:
         for start_index, end_index in self.bandwidth_indices:
             yield x[:, :, start_index:end_index]
 

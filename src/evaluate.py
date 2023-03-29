@@ -1,87 +1,57 @@
 import argparse
 import logging
 from pathlib import Path
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import OmegaConf
 from collections import defaultdict
 from typing import Dict
-
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import Dataset
 
-from data import TestSourceSeparationDataset
-from train import initialize_model, initialize_featurizer
-from utils.utils_inference import load_pl_state_dict, get_minibatch, overlap_add
+from separator import Separator
+from data import EvalSourceSeparationDataset
+from utils.utils_inference import load_pl_state_dict
 from utils.utils_test import compute_SDRs
 
 
 class EvaluateProgram:
-
     DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     CFG_PATH = '{}/tb_logs/hparams.yaml'
     CKPT_DIR = '{}/weights'
 
     def __init__(
             self,
-            run_dir: str
+            run_dir: str,
+            device: str = 'cuda'
     ):
+        # paths
         self.cfg_path = Path(self.CFG_PATH.format(run_dir))
         self.ckpt_dir = Path(self.CKPT_DIR.format(run_dir))
 
+        # config params
         self.cfg = OmegaConf.load(self.cfg_path)
         logger.info(f"Used model: {self.cfg_path}")
 
-        logger.info("Initializing modules...")
-        model, featurizer, inverse_featurizer, dataset = self.initialize_all()
-        self.model = model
-        self.featurizer = featurizer
-        self.inverse_featurizer = inverse_featurizer
-        self.dataset = dataset
+        self.device = torch.device(
+            'cuda' if torch.cuda.is_available() and device == 'cuda' else 'cpu'
+        )
 
-    def initialize_all(self):
-        featurizer, inverse_featurizer = initialize_featurizer(self.cfg)
-        model, *_ = initialize_model(self.cfg)
-        _ = model.eval()
+        logger.info("Initializing the dataset...")
+        self.dataset = EvalSourceSeparationDataset(mode='test', **self.cfg.test_dataset)
+        logger.info("Initializing the separator...")
+        self.cfg['audio_params'] = self.cfg.test_dataset
+        self.sep = Separator(self.cfg, None)
+        _ = self.sep.eval()
+        _ = self.sep.to(self.device)
 
-        _ = featurizer.to(self.DEVICE)
-        _ = inverse_featurizer.to(self.DEVICE)
-        _ = model.to(self.DEVICE)
-
-        dataset = TestSourceSeparationDataset(**self.cfg.test_dataset)
-
-        return model, featurizer, inverse_featurizer, dataset
-
-    @torch.no_grad()
-    def inference_one(
-            self,
-            y: torch.Tensor,
-            dur: int,
-    ) -> torch.Tensor:
-        # to device
-        yT = y.to(self.DEVICE)
-        # run through featurizer
-        yS = self.featurizer(yT)
-        # run through model
-        yS_hat = torch.empty_like(yS)
-        for s, e in get_minibatch(yS.shape[0]):
-            yS_hat[s:e] = self.model(yS[s:e])
-        # run through inverse featurizer
-        yT_hat = self.inverse_featurizer(yS_hat, length=yT.shape[-1]).cpu()
-        # overlap-add moment
-        yT_hat = overlap_add(yT_hat, dur, hl=self.dataset.hop_size)
-        # delete padded chunks
-        yT_hat = yT_hat[:, self.dataset.pad_size:-self.dataset.pad_size]
-        return yT_hat
-
-    @torch.no_grad()
-    def evaluate_all(self) -> Dict[str, np.ndarray]:
+    def run_one_ckpt(self) -> Dict[str, np.ndarray]:
         metrics = defaultdict(list)
-        for item in self.dataset:
-            # load dataset item
-            y, y_dur, y_tgt = item
+        for y, y_tgt in self.dataset:
+            # send to device
+            y = y.to(self.device)
+
             # run inference on mixture
-            y_hat = self.inference_one(y, y_dur)
+            y_hat = self.sep(y).cpu()
+
             # compute and save metrics
             cSDR, uSDR = compute_SDRs(y_hat, y_tgt)
 
@@ -92,12 +62,13 @@ class EvaluateProgram:
         metrics['uSDR'] = np.array(metrics['uSDR'])
         return metrics
 
-    def evaluate(self) -> None:
+    def run(self) -> None:
+        # iterate over checkpoints
         for ckpt_path in self.ckpt_dir.glob("*.ckpt"):
             logger.info(f"Evaluating checkpoint - {ckpt_path.name}")
             state_dict = load_pl_state_dict(ckpt_path, device=self.DEVICE)
-            _ = self.model.load_state_dict(state_dict, strict=True)
-            metrics = self.evaluate_all()
+            _ = self.sep.model[1].load_state_dict(state_dict, strict=True)
+            metrics = self.run_one_ckpt()
             for m in metrics:
                 logger.info(
                     f"Metric - {m}, mean - {metrics[m].mean():.3f}, std - {metrics[m].std():.3f}"
@@ -105,11 +76,12 @@ class EvaluateProgram:
         return None
 
 
-def main(run_dir: str):
+def main(args):
     logger.info("Starting evaluation...")
-    program = EvaluateProgram(run_dir)
+    args = vars(args)
+    program = EvaluateProgram(**args)
     logger.info("Starting evaluation run...")
-    program.evaluate()
+    program.run()
 
 
 if __name__ == '__main__':
@@ -120,6 +92,13 @@ if __name__ == '__main__':
         type=str,
         required=True,
         help="Path to directory checkpoints, configs, etc"
+    )
+    parser.add_argument(
+        '--device',
+        type=str,
+        required=False,
+        default='cuda',
+        help="Device name - either 'cuda', or 'cpu'."
     )
     args = parser.parse_args()
 
@@ -132,4 +111,4 @@ if __name__ == '__main__':
         filemode='w'
     )
 
-    main(args.run_dir)
+    main(args)

@@ -6,7 +6,7 @@ model_ckpt:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
   monitor: 'val/loss'
   mode: 'min'
-  save_top_k: 5
+  save_top_k: 4
   dirpath: '/weights'
   filename: 'epoch{epoch:02d}-val_loss{val/loss:.2f}'
   auto_insert_metric_name: False
@@ -15,7 +15,7 @@ model_ckpt_usdr:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
   monitor: 'val/usdr'
   mode: 'max'
-  save_top_k: 5
+  save_top_k: 4
   dirpath: ${..model_ckpt.dirpath}
   filename: 'epoch{epoch:02d}-val_usdr{val/usdr:.2f}'
   auto_insert_metric_name: False
@@ -25,6 +25,7 @@ early_stop:
   monitor: 'val/loss'
   mode: "min"
   patience: 10
+  min_delta: 1e-4
 
 ema:
   _target_: utils.ema.EMA

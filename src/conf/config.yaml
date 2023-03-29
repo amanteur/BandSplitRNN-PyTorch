@@ -5,19 +5,19 @@ defaults:
   - val_dataset: default
   - test_dataset: default
   - sad: default
-  - augmentations: default
+  - augmentations: cropgain
   - featurizer: stft
   - callbacks: default
   - _self_
 
 # data
 train_loader:
-  batch_size: 2
+  batch_size: 4
   num_workers: 8
   shuffle: True
   drop_last: True
 val_loader:
-  batch_size: 2
+  batch_size: 4
   num_workers: 8
   shuffle: False
   drop_last: False
@@ -26,10 +26,16 @@ val_loader:
 opt:
   _target_: torch.optim.Adam
   lr: 1e-3
+# sch:
+#   _target_: torch.optim.lr_scheduler.StepLR
+#   step_size: 2
+#   gamma: 0.98
+
+# torch.optim.lr_scheduler.LambdaLR
 sch:
-  _target_: torch.optim.lr_scheduler.StepLR
-  step_size: 2
-  gamma: 0.98
+    warmup_step: 10
+    alpha: 0.1
+    gamma: 0.98
 
 ckpt_path: null
 
@@ -42,7 +48,7 @@ logger:
 
 trainer:
   fast_dev_run: False
-  max_epochs: 100
+  max_epochs: 250
   check_val_every_n_epoch: 1
   num_sanity_val_steps: 5
   log_every_n_steps: 100
@@ -52,7 +58,7 @@ trainer:
   precision: 32
   enable_progress_bar: True
   benchmark: True
-  deterministic: True
+  deterministic: False
 
 # hydra
 experiment_dirname: bandsplitrnn

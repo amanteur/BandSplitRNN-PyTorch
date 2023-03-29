@@ -1,5 +1,5 @@
 import torch
-from typing import List, Tuple
+import typing as tp
 
 
 def get_fftfreq(
@@ -16,8 +16,8 @@ def get_fftfreq(
 
 def get_subband_indices(
         freqs: torch.Tensor,
-        splits: List[Tuple[int, int]],
-) -> List[Tuple[int, int]]:
+        splits: tp.List[tp.Tuple[int, int]],
+) -> tp.List[tp.Tuple[int, int]]:
     """
     Computes subband frequency indices with given bandsplits
     """
@@ -35,10 +35,10 @@ def get_subband_indices(
 
 
 def freq2bands(
-        bandsplits: List[Tuple[int, int]],
+        bandsplits: tp.List[tp.Tuple[int, int]],
         sr: int = 44100,
         n_fft: int = 2048
-) -> List[Tuple[int, int]]:
+) -> tp.List[tp.Tuple[int, int]]:
     """
     Returns start and end FFT indices of given bandsplits
     """

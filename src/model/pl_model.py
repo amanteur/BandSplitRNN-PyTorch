@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.optim import Optimizer, lr_scheduler
-from typing import Tuple, Dict
+import typing as tp
 from omegaconf import DictConfig
 
 
@@ -70,45 +70,55 @@ class PLModel(pl.LightningModule):
         return loss
 
     def step(
-            self, batch
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
+            self, batchT: torch.Tensor
+    ) -> tp.Tuple[torch.Tensor, tp.Dict[str, torch.Tensor], torch.Tensor]:
         """
         Input shape: [batch_size, n_sources, n_channels, time]
         """
         # augmentations
-        batch = self.augmentations(batch)
-        tgt_time = batch[:, 1]
+        batchT = self.augmentations(batchT)
+
         # STFT
-        batch = self.featurizer(batch)
-        mix_freq, tgt_freq = batch[:, 0], batch[:, 1]
+        batchS = self.featurizer(batchT)
+        mixS, tgtS = batchS[:, 0], batchS[:, 1]
+
         # apply model
-        tgt_freq_hat = self.model(mix_freq)
-        tgt_time_hat = self.inverse_featurizer(tgt_freq_hat, length=tgt_time.shape[-1])
+        predS = self.model(mixS)
+
+        # iSTFT
+        batchT = self.inverse_featurizer(
+            torch.stack((predS, tgtS), dim=1)
+        )
+        predT, tgtT = batchT[:, 0], batchT[:, 1]
+
         # compute loss
         loss, loss_dict = self.compute_losses(
-            tgt_freq_hat, tgt_freq,
-            tgt_time_hat, tgt_time
+            predS, tgtS,
+            predT, tgtT
         )
-        usdr = self.compute_usdr(tgt_time_hat, tgt_time)
+
+        # compute metrics
+        usdr = self.compute_usdr(predT, tgtT)
+
         return loss, loss_dict, usdr
 
     def compute_losses(
             self,
-            tgt_freq_hat: torch.Tensor,
-            tgt_freq: torch.Tensor,
-            tgt_time_hat: torch.Tensor,
-            tgt_time: torch.Tensor,
-    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+            predS: torch.Tensor,
+            tgtS: torch.Tensor,
+            predT: torch.Tensor,
+            tgtT: torch.Tensor,
+    ) -> tp.Tuple[torch.Tensor, tp.Dict[str, torch.Tensor]]:
         # frequency domain
         lossR = self.mae_specR(
-            tgt_freq_hat.real, tgt_freq.real
+            predS.real, tgtS.real
         )
         lossI = self.mae_specI(
-            tgt_freq_hat.imag, tgt_freq.imag
+            predS.imag, tgtS.imag
         )
         # time domain
         lossT = self.mae_time(
-            tgt_time_hat, tgt_time
+            predT, tgtT
         )
         loss_dict = {
             "lossSpecR": lossR,
@@ -120,12 +130,12 @@ class PLModel(pl.LightningModule):
 
     @staticmethod
     def compute_usdr(
-            y_hat: torch.Tensor,
-            y_tgt: torch.Tensor,
+            predT: torch.Tensor,
+            tgtT: torch.Tensor,
             delta: float = 1e-7
     ) -> torch.Tensor:
-        num = torch.sum(torch.square(y_tgt), dim=(1, 2))
-        den = torch.sum(torch.square(y_tgt - y_hat), dim=(1, 2))
+        num = torch.sum(torch.square(tgtT), dim=(1, 2))
+        den = torch.sum(torch.square(tgtT - predT), dim=(1, 2))
         num += delta
         den += delta
         usdr = 10 * torch.log10(num / den)
