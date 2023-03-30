@@ -1,0 +1,19 @@
+lr_monitor:
+  _target_: pytorch_lightning.callbacks.LearningRateMonitor
+  logging_interval: 'epoch'
+
+early_stop:
+  _target_: pytorch_lightning.callbacks.EarlyStopping
+  monitor: 'val/loss'
+  mode: "min"
+  patience: 10
+  min_delta: 1e-4
+
+ema:
+  _target_: utils.callbacks.EMA
+  decay: 0.9999
+  validate_original_weights: False
+  every_n_steps: 1
+
+log_on_epoch:
+  _target_: utils.callbacks.OverrideEpochStepCallback

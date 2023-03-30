@@ -71,8 +71,6 @@ class BandTransformerModelModule(nn.Module):
 
     def __init__(
             self,
-            k_subbands: int,
-            t_timesteps: int,
             input_dim_size: int,
             hidden_dim_size: int,
             num_layers: int = 6,
@@ -83,10 +81,10 @@ class BandTransformerModelModule(nn.Module):
 
         for _ in range(num_layers):
             transformer_across_t = TransformerModule(
-                k_subbands, input_dim_size, hidden_dim_size
+                input_dim_size, hidden_dim_size
             )
             transformer_across_k = TransformerModule(
-                t_timesteps, input_dim_size, hidden_dim_size
+                input_dim_size, hidden_dim_size
             )
             self.dptransformers.append(
                 nn.Sequential(transformer_across_t, transformer_across_k)

@@ -40,7 +40,8 @@ class EMA(Callback):
     """
 
     def __init__(
-        self, decay: float, validate_original_weights: bool = False, every_n_steps: int = 1, cpu_offload: bool = False,
+            self, decay: float, validate_original_weights: bool = False, every_n_steps: int = 1,
+            cpu_offload: bool = False,
     ):
         if not (0 <= decay <= 1):
             raise MisconfigurationException("EMA decay value must be between 0 and 1")
@@ -113,7 +114,7 @@ class EMA(Callback):
                 optimizer.save_original_optimizer_state = False
 
     def on_load_checkpoint(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", checkpoint: Dict[str, Any]
+            self, trainer: "pl.Trainer", pl_module: "pl.LightningModule", checkpoint: Dict[str, Any]
     ) -> None:
         checkpoint_callback = trainer.checkpoint_callback
 
@@ -201,12 +202,12 @@ class EMAOptimizer(torch.optim.Optimizer):
     """
 
     def __init__(
-        self,
-        optimizer: torch.optim.Optimizer,
-        device: torch.device,
-        decay: float = 0.9999,
-        every_n_steps: int = 1,
-        current_step: int = 0,
+            self,
+            optimizer: torch.optim.Optimizer,
+            device: torch.device,
+            decay: float = 0.9999,
+            every_n_steps: int = 1,
+            current_step: int = 0,
     ):
         self.optimizer = optimizer
         self.decay = decay
@@ -239,7 +240,7 @@ class EMAOptimizer(torch.optim.Optimizer):
             opt_params = list(self.all_parameters())
 
             self.ema_params += tuple(
-                copy.deepcopy(param.data.detach()).to(self.device) for param in opt_params[len(self.ema_params) :]
+                copy.deepcopy(param.data.detach()).to(self.device) for param in opt_params[len(self.ema_params):]
             )
             self.rebuild_ema_params = False
 
@@ -344,3 +345,21 @@ class EMAOptimizer(torch.optim.Optimizer):
     def add_param_group(self, param_group):
         self.optimizer.add_param_group(param_group)
         self.rebuild_ema_params = True
+
+
+class OverrideEpochStepCallback(Callback):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def on_training_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+        self._log_step_as_current_epoch(trainer, pl_module)
+
+    def on_test_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+        self._log_step_as_current_epoch(trainer, pl_module)
+
+    def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+        self._log_step_as_current_epoch(trainer, pl_module)
+
+    def _log_step_as_current_epoch(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+        pl_module.log("step", trainer.current_epoch)
+
