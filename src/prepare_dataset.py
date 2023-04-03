@@ -41,7 +41,7 @@ parser.add_argument(
     '--sad-cfg-path',
     type=str,
     required=False,
-    default="./conf/sad/default.yaml",
+    default="./conf/sad/cropgainmix.yaml",
     help="Path to Source Activity Detection config file"
 )
 parser.add_argument(

@@ -86,7 +86,7 @@ def initialize_model(
         **cfg.model
     )
     # initialize optimizer
-    if 'opt' in cfg:
+    if hasattr(cfg, 'opt'):
         opt = instantiate(
             cfg.opt,
             params=model.parameters()
@@ -94,7 +94,7 @@ def initialize_model(
     else:
         opt = None
     # initialize scheduler
-    if 'sch' in cfg:
+    if hasattr(cfg, 'sch'):
         if hasattr(cfg.sch, '_target_'):
             # other than LambdaLR
             sch = instantiate(

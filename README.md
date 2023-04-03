@@ -9,20 +9,12 @@ Unofficial PyTorch implementation of the paper [Music Source Separation with Ban
 
 1. [Dependencies](#dependencies)
 2. [Quick Start](#quickstart)
-3. [Train you model](#trainmodel)
+3. [Train your model](#trainmodel)
    1. [Dataset preprocessing](#preprocessing)
    2. [Training](#train)
    3. [Evaluation](#eval)
 4. [Repository structure](#structure)
 5. [Citing](#cite)
-
----
-<a name="todos"/>
-
-## TODOs
-
-- Train `other`/`bass`/`drums` models
-- Add Self-Supervised pipeline
 
 ---
 <a name="dependencies"/>
@@ -48,7 +40,7 @@ All scripts should be run from `src` directory.
 
 To run inference on your file(s), run the following script: 
 ```
-usage: inference.py [-h] -i IN_PATH -o OUT_PATH [-t TARGET] [-c CKPT_PATH]
+python3 inference.py [-h] -i IN_PATH -o OUT_PATH [-t TARGET] [-c CKPT_PATH] [-d DEVICE]
 
 options:
   -h, --help            show this help message and exit
@@ -59,19 +51,20 @@ options:
   -t TARGET, --target TARGET
                         Name of the target source to extract.
   -c CKPT_PATH, --ckpt-path CKPT_PATH
-                        Path to model's checkpoint. If not specified, the .ckpt from ./saved_models/{TARGET} is used.
-
+                        Path to model's checkpoint. If not specified, the .ckpt from SAVED_MODELS_DIR/{target} is used.
+  -d DEVICE, --device DEVICE
+                        Device name - either 'cuda', or 'cpu'.
 ```
 You can customize inference via changing `./saved_models/{TARGET}/hparams.yaml` file.
 
 Available checkpoints:
 
-| Target     | Epoch | Validation Loss | cSDR | uSDR |
-|------------|-------|-----------------|------|------|
-| [Vocals]() |       |                 | ...  | ...  |
-| [Bass]()   |       |                 | ...  | ...  |
-| [Drums]()  |       |                 | ...  | ...  |
-| [Other]()  |       |                 | ...  | ...  |
+| Target     | Epoch | Validation Loss | SDR |
+|------------|-------|-----------------|-----|
+| [Vocals]() |       |                 |     |
+| [Bass]()   |       |                 |     |
+| [Drums]()  |       |                 |     |
+| [Other]()  |       |                 |     |
 
 `Train`/`evaluation`/`inference` pipelines support GPU acceleration. To activate it, specify the following env variable:
 ```
@@ -106,7 +99,7 @@ To select these indices, the proposed Source Activity Detection algorithm was us
 
 To read the `musdb18` dataset and extract salient fragments according to the `target` source, use the following script:
 ```
-usage: prepare_dataset.py [-h] -i INPUT_DIR -o OUTPUT_DIR [--subset SUBSET] [--split SPLIT] [--sad_cfg SAD_CFG] [-t TARGET [TARGET ...]]
+python3 prepare_dataset.py [-h] -i INPUT_DIR -o OUTPUT_DIR [--subset SUBSET] [--split SPLIT] [--sad_cfg SAD_CFG] [-t TARGET [TARGET ...]]
 
 options:
   -h, --help            show this help message and exit
@@ -170,12 +163,13 @@ This folder will have the following structure:
 To start evaluating a model with given configurations, use the following script:
 
 ```
-usage: evaluate.py [-h] -d RUN_DIR
+python3 evaluate.py [-h] -d RUN_DIR [--device DEVICE]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   -d RUN_DIR, --run-dir RUN_DIR
-                        Path to directory with saved weights and configuration files
+                        Path to directory checkpoints, configs, etc
+  --device DEVICE       Device name - either 'cuda', or 'cpu'.
 ```
 
 This script creates `test.log` in the `RUN_DIR` directory and writes the `uSDR` and `cSDR` metrics there 
@@ -194,7 +188,7 @@ The structure of this repository is as following:
 │   │   └── *.py
 │   ├── files                       - output files from prepare_dataset.py script
 │   │   └── *.txt
-│   ├── model                       - directory with neural networks modules 
+│   ├── model                       - directory with modules of the model 
 │   │   ├── modules
 │   │   │   └── *.py
 │   │   ├── __init__.py
@@ -205,6 +199,7 @@ The structure of this repository is as following:
 │   ├── evaluate.py                 - script for evaluation pipeline 
 │   ├── inference.py                - script for inference pipeline
 │   ├── prepare_dataset.py          - script for dataset preprocessing pipeline
+│   ├── separator.py                - separator class, which is used in evaluation and inference pipelines
 │   └── train.py                    - script for training pipeline
 ├── example                         - test example for inference.py
 │   └── *.wav
