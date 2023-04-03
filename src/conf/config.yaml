@@ -5,7 +5,7 @@ defaults:
   - val_dataset: default
   - test_dataset: default
   - sad: default
-  - augmentations: cropgain
+  - augmentations: default
   - featurizer: stft
   - callbacks: default
   - _self_
