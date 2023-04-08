@@ -8,11 +8,11 @@ Unofficial PyTorch implementation of the paper [Music Source Separation with Ban
 ## Table of Contents
 
 1. [Dependencies](#dependencies)
+2. [Inference](#inference)
 3. [Train your model](#trainmodel)
    1. [Dataset preprocessing](#preprocessing)
    2. [Training](#train)
    3. [Evaluation](#eval)
-4. [Inference](#inference)
 4. [Repository structure](#structure)
 5. [Citing](#cite)
 
@@ -27,7 +27,7 @@ To install dependencies, run:
 pip install -r requirements.txt
 ```
 Additionally, **ffmpeg** should be installed in the venv.  
-If using ``conda``, you can run:
+If using ``conda`[example_vocals.mp3](..%2F..%2F..%2FDownloads%2Fexample_vocals.mp3)`, you can run:
 ```
 conda install -c conda-forge ffmpeg
 ```
@@ -38,6 +38,50 @@ To activate it, specify the following `env` variable:
 ```
 export CUDA_VISIBLE_DEVICES={DEVICE_NUM} 
 ```
+
+---
+<a name="inference"/>
+
+## Inference
+
+To run inference on your file(s), firstly, you need to download checkpoints.
+
+Available checkpoints:
+
+| Target                                                                                       | Epoch | uSDR (hop=0.5) | cSDR (hop=0.5) |
+|----------------------------------------------------------------------------------------------|-------|----------------|----------------|
+| [Vocals](https://drive.google.com/file/d/1d4AV3sH7mhVed8L9ch5otXB0HzjCPnw0/view?usp=sharing) | 168   | 5.662 +- 2.248 | 5.414 +- 2.341 |
+| Bass                                                                                         | -     | -              | -              |
+| Drums                                                                                        | -     | -              | -              |
+| Other                                                                                        | -     | -              | -              |
+
+After you download the `.pt` file, put it into `./saved_models/{TARGET}/` directory.
+
+Afterwards, run the following script: 
+
+```
+python3 inference.py [-h] -i IN_PATH -o OUT_PATH [-t TARGET] [-c CKPT_PATH] [-d DEVICE]
+
+options:
+  -h, --help            show this help message and exit
+  -i IN_PATH, --in-path IN_PATH
+                        Path to the input directory/file with .wav/.mp3 extensions.
+  -o OUT_PATH, --out-path OUT_PATH
+                        Path to the output directory. Files will be saved in .wav format with sr=44100.
+  -t TARGET, --target TARGET
+                        Name of the target source to extract.
+  -c CKPT_PATH, --ckpt-path CKPT_PATH
+                        Path to model's checkpoint. If not specified, the .ckpt from SAVED_MODELS_DIR/{target} is used.
+  -d DEVICE, --device DEVICE
+                        Device name - either 'cuda', or 'cpu'.
+```
+You can customize inference via changing `audio_params` in `./saved_models/{TARGET}/hparams.yaml` file. Here is `vocals` example:
+```
+python3 inference.py -i ../example/example.mp3 -o ../example/ -t vocals
+```
+
+There is still some work going on with training better checkpoints, 
+and at this moment I've trained only (pretty bad) vocals extraction model. 
 
 ---
 <a name="trainmodel"/>
@@ -142,30 +186,6 @@ options:
 
 This script creates `test.log` in the `RUN_DIR` directory and writes the `uSDR` and `cSDR` metrics there 
 for the test subset of the MUSDB18 dataset.
-
----
-<a name="inference"/>
-
-## Inference
-
-To run inference on your file(s), run the following script: 
-```
-python3 inference.py [-h] -i IN_PATH -o OUT_PATH [-t TARGET] [-c CKPT_PATH] [-d DEVICE]
-
-options:
-  -h, --help            show this help message and exit
-  -i IN_PATH, --in-path IN_PATH
-                        Path to the input directory/file with .wav/.mp3 extensions.
-  -o OUT_PATH, --out-path OUT_PATH
-                        Path to the output directory. Files will be saved in .wav format with sr=44100.
-  -t TARGET, --target TARGET
-                        Name of the target source to extract.
-  -c CKPT_PATH, --ckpt-path CKPT_PATH
-                        Path to model's checkpoint. If not specified, the .ckpt from SAVED_MODELS_DIR/{target} is used.
-  -d DEVICE, --device DEVICE
-                        Device name - either 'cuda', or 'cpu'.
-```
-You can customize inference via changing `./saved_models/{TARGET}/hparams.yaml` file.
 
 
 ---
