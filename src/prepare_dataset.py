@@ -132,8 +132,8 @@ def main(
 
 if __name__ == '__main__':
     main(
-        args.db_dir,
-        args.save_dir,
+        args.input_dir,
+        args.output_dir,
         args.subset,
         args.split,
         args.targets,
