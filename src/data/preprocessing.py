@@ -42,7 +42,7 @@ class SAD:
     def calculate_rms(y: torch.Tensor):
         """
         """
-        y = torch.mean(torch.abs(y), dim=-1, keepdim=True)
+        y = torch.mean(torch.square(y), dim=-1, keepdim=True)
         y = torch.sqrt(y)
         return y
 
