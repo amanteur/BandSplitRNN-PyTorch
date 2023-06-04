@@ -116,5 +116,5 @@ if __name__ == "__main__":
 
     sad = SAD(sr=sr)
     y, sr = torchaudio.load(example_path)
-    y_salience = sad(y)
+    y_salience = sad(y)[0]
     print(f"Initial shape: {y.shape}.\nShape after source activity detection: {y_salience.shape}")
