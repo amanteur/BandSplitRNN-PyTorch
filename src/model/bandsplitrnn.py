@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import typing as tp
 
-from .modules import BandSplitModule, BandSequenceModelModule, MaskEstimationModule, BandTransformerModelModule
+from src.model.modules import BandSplitModule, BandSequenceModelModule, MaskEstimationModule, BandTransformerModelModule
 
 
 class BandSplitRNN(nn.Module):

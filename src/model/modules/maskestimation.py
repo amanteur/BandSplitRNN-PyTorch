@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import typing as tp
 
-from .utils import freq2bands
+from src.model.modules.utils import freq2bands
 
 
 class GLU(nn.Module):
@@ -109,6 +109,7 @@ class MaskEstimationModule(nn.Module):
             B, T, F = out.shape
             # return to complex
             if self.cac:
+                out = out.permute(0, 2, 1).contiguous()
                 out = out.view(B, -1, 2, F//self.frequency_mul, T).permute(0, 1, 3, 4, 2)
                 out = torch.view_as_complex(out.contiguous())
             else:
