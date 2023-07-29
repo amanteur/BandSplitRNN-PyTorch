@@ -3,7 +3,7 @@ import typing as tp
 import torch
 import torch.nn as nn
 
-from src.model.modules.utils import freq2bands
+from model.modules.utils import freq2bands
 
 
 class BandSplitModule(nn.Module):

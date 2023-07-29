@@ -143,7 +143,7 @@ class PLModel(pl.LightningModule):
         return usdr.mean()
 
     def on_before_optimizer_step(
-            self, optimizer
+            self, *args, **kwargs
     ):
         norms = pl.utilities.grad_norm(self, norm_type=2)
         norms = dict(filter(lambda elem: '_total' in elem[0], norms.items()))
