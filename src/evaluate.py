@@ -14,7 +14,6 @@ from utils.utils_test import compute_SDRs
 
 
 class EvaluateProgram:
-    DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     CFG_PATH = '{}/tb_logs/hparams.yaml'
     CKPT_DIR = '{}/weights'
 
@@ -66,7 +65,7 @@ class EvaluateProgram:
         # iterate over checkpoints
         for ckpt_path in self.ckpt_dir.glob("*.ckpt"):
             logger.info(f"Evaluating checkpoint - {ckpt_path.name}")
-            state_dict = load_pl_state_dict(ckpt_path, device=self.DEVICE)
+            state_dict = load_pl_state_dict(ckpt_path, device=self.device)
             _ = self.sep.model[1].load_state_dict(state_dict, strict=True)
             metrics = self.run_one_ckpt()
             for m in metrics:

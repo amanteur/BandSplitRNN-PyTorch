@@ -2,3 +2,5 @@
 **/*logs/
 *.pyc
 **/*.ipynb
+.DS_Store
+.idea/

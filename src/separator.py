@@ -19,7 +19,7 @@ class Separator(nn.Module):
         self.cfg = cfg
 
         # modules params
-        self.ckpt_path = Path(ckpt_path)
+        self.ckpt_path = Path(ckpt_path) if ckpt_path is not None else None
 
         # module initialization
         self.model = self.initialize_modules()
@@ -51,13 +51,14 @@ class Separator(nn.Module):
         _ = model.eval()
 
         # load checkpoint
-        if self.ckpt_path.suffix == '.ckpt':
-            state_dict = load_pl_state_dict(self.ckpt_path, device='cpu')
-        elif self.ckpt_path.suffix == '.pt':
-            state_dict = torch.load(self.ckpt_path, map_location='cpu')
-        else:
-            raise ValueError(f"Expected checkpoint path, got {self.ckpt_path}.")
-        _ = model.load_state_dict(state_dict, strict=True)
+        if self.ckpt_path is not None:
+            if self.ckpt_path.suffix == '.ckpt':
+                state_dict = load_pl_state_dict(self.ckpt_path, device='cpu')
+            elif self.ckpt_path.suffix == '.pt':
+                state_dict = torch.load(self.ckpt_path, map_location='cpu')
+            else:
+                raise ValueError(f"Expected checkpoint path, got {self.ckpt_path}.")
+            _ = model.load_state_dict(state_dict, strict=True)
 
         # concat to the one module
         model = nn.Sequential(featurizer, model, inverse_featurizer)
