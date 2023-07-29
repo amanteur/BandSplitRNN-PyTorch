@@ -1,8 +1,9 @@
+import typing as tp
+
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 from torch.optim import Optimizer, lr_scheduler
-import typing as tp
 from omegaconf import DictConfig
 
 

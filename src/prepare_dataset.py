@@ -1,10 +1,12 @@
 import argparse
+import typing as tp
+from pathlib import Path
+
 import musdb
 import torch
 from omegaconf import OmegaConf, DictConfig
-from pathlib import Path
-import typing as tp
 from tqdm import tqdm
+
 from data import SAD
 
 

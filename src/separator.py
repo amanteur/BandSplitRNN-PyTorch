@@ -1,9 +1,10 @@
+import typing as tp
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from omegaconf import DictConfig
-from pathlib import Path
-import typing as tp
 
 from train import initialize_model, initialize_featurizer
 from utils.utils_inference import load_pl_state_dict, get_minibatch

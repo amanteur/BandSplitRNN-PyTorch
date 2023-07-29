@@ -1,11 +1,12 @@
 import argparse
 import logging
+import typing as tp
 from pathlib import Path
-from omegaconf import OmegaConf
 from collections import defaultdict
-from typing import Dict
+
 import numpy as np
 import torch
+from omegaconf import OmegaConf
 
 from separator import Separator
 from data import EvalSourceSeparationDataset
@@ -42,7 +43,7 @@ class EvaluateProgram:
         _ = self.sep.eval()
         _ = self.sep.to(self.device)
 
-    def run_one_ckpt(self) -> Dict[str, np.ndarray]:
+    def run_one_ckpt(self) -> tp.Dict[str, np.ndarray]:
         metrics = defaultdict(list)
         for y, y_tgt in self.dataset:
             # send to device

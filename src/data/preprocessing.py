@@ -1,5 +1,6 @@
-import torch
 import typing as tp
+
+import torch
 
 
 class SAD:

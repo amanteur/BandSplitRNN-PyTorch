@@ -1,10 +1,12 @@
+import shutil
+import typing as tp
+import logging
+import traceback
+
 import hydra
 from hydra.core.hydra_config import HydraConfig
-from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
-from typing import Tuple
-import shutil
-
+from omegaconf import DictConfig, OmegaConf
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -14,13 +16,10 @@ from torch.optim import Optimizer, lr_scheduler
 from data import SourceSeparationDataset, collate_fn
 from model import BandSplitRNN, PLModel
 
-import logging
-import traceback
-
 log = logging.getLogger(__name__)
 
 
-def initialize_loaders(cfg: DictConfig) -> Tuple[DataLoader, DataLoader]:
+def initialize_loaders(cfg: DictConfig) -> tp.Tuple[DataLoader, DataLoader]:
     """
     Initializes train and validation dataloaders from configuration file.
     """
@@ -51,7 +50,7 @@ def initialize_loaders(cfg: DictConfig) -> Tuple[DataLoader, DataLoader]:
 
 def initialize_featurizer(
         cfg: DictConfig
-) -> Tuple[nn.Module, nn.Module]:
+) -> tp.Tuple[nn.Module, nn.Module]:
     """
     Initializes direct and inverse featurizers for audio.
     """
@@ -77,7 +76,7 @@ def initialize_augmentations(
 
 def initialize_model(
         cfg: DictConfig
-) -> Tuple[nn.Module, Optimizer, lr_scheduler._LRScheduler]:
+) -> tp.Tuple[nn.Module, Optimizer, lr_scheduler._LRScheduler]:
     """
     Initializes model from configuration file.
     """

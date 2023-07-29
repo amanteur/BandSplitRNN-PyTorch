@@ -1,6 +1,7 @@
+import typing as tp
+
 import torch
 import torch.nn as nn
-import typing as tp
 
 from src.model.modules.utils import freq2bands
 

@@ -1,9 +1,10 @@
 import argparse
-from pathlib import Path
-from omegaconf import OmegaConf
-import soundfile as sf
 import typing as tp
+from pathlib import Path
+
 import torch
+import soundfile as sf
+from omegaconf import OmegaConf
 
 from data import EvalSourceSeparationDataset
 from separator import Separator
