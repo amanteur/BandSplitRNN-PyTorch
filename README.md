@@ -7,6 +7,7 @@ Unofficial PyTorch implementation of the paper [Music Source Separation with Ban
 ---
 ## Table of Contents
 
+1. [Changelog](#changelog)
 1. [Dependencies](#dependencies)
 2. [Inference](#inference)
 3. [Train your model](#trainmodel)
@@ -15,6 +16,17 @@ Unofficial PyTorch implementation of the paper [Music Source Separation with Ban
    3. [Evaluation](#eval)
 4. [Repository structure](#structure)
 5. [Citing](#cite)
+
+---
+<a name="changelog"/>
+
+# Changelog
+
+
+- **29.07.2023**
+  - Made some updates to the code.
+  - A big thanks to [unemployed-denizen](https://github.com/unemployed-denizen) for finding a bug in the code. 
+  I've just uploaded the new checkpoint to the table with higher scores than before.
 
 ---
 <a name="dependencies"/>
@@ -50,7 +62,7 @@ Available checkpoints:
 
 | Target                                                                                       | Epoch | uSDR (hop=0.5) | cSDR (hop=0.5) |
 |----------------------------------------------------------------------------------------------|-------|----------------|----------------|
-| [Vocals](https://drive.google.com/file/d/1d4AV3sH7mhVed8L9ch5otXB0HzjCPnw0/view?usp=sharing) | 168   | 5.662 +- 2.248 | 5.414 +- 2.341 |
+| [Vocals](https://drive.google.com/file/d/1qTOhnYuo5VWC3fSo8Gz2iUQo7JzXQNzG/view?usp=sharing) | 139   | 6.883 +- 2.488 | 6.665 +- 2.717 |
 | Bass                                                                                         | -     | -              | -              |
 | Drums                                                                                        | -     | -              | -              |
 | Other                                                                                        | -     | -              | -              |
