@@ -62,7 +62,7 @@ Available checkpoints:
 
 | Target                                                                                       | Epoch | uSDR (hop=0.5) | cSDR (hop=0.5) |
 |----------------------------------------------------------------------------------------------|-------|----------------|----------------|
-| [Vocals](https://drive.google.com/file/d/1qTOhnYuo5VWC3fSo8Gz2iUQo7JzXQNzG/view?usp=sharing) | 139   | 6.883 +- 2.488 | 6.665 +- 2.717 |
+| [Vocals](https://drive.google.com/file/d/14FzOPUcf4BKym1kCRqRH1PeJWSvv4qHE/view?usp=sharing) | 139   | 6.883 +- 2.488 | 6.665 +- 2.717 |
 | Bass                                                                                         | -     | -              | -              |
 | Drums                                                                                        | -     | -              | -              |
 | Other                                                                                        | -     | -              | -              |
